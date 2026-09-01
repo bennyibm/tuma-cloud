@@ -1,0 +1,163 @@
+<mxfile host="app.diagrams.net" modified="2026-08-27T10:10:00.000Z" agent="Antigravity" version="21.0.0" type="device">
+  <diagram id="diag_pipeline_queues" name="Pipeline Envoi et Queues">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="950" background="#F8FAFC">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TITRE -->
+        <mxCell id="title_pipe" value="&lt;b style=&quot;font-size: 20px;&quot;&gt;⚙️ Pipeline d'Envoi Asynchrone &amp;amp; Architecture des 3 Files BullMQ / Redis&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="280" y="20" width="740" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- COLONNE 1 : INGESTION & GATEWAY -->
+        <mxCell id="grp_ingestion" value="&lt;b&gt;1. Ingestion Synchrone (&amp;lt; 30ms)&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#3B82F6;fontColor=#1E3A8A;rounded=1;shadow=1;startSize=28;" vertex="1" parent="1">
+          <mxGeometry x="50" y="90" width="280" height="780" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_client_req" value="&lt;b&gt;POST /v1/emails&lt;/b&gt;&lt;br&gt;Bearer sk_live_...&lt;br&gt;Idempotency-Key: abc-123&lt;br&gt;{ from, to, template, ... }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3B82F6;fontColor=#1E293B;fontSize=11;" vertex="1" parent="grp_ingestion">
+          <mxGeometry x="25" y="50" width="230" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_auth_check" value="&lt;b&gt;Garde d'Authentification&lt;/b&gt;&lt;br&gt;Hash match (Argon2)&lt;br&gt;Check Quota &amp;amp; Permissions" style="rhombus;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#2563EB;fontColor=#1E3A8A;fontSize=11;" vertex="1" parent="grp_ingestion">
+          <mxGeometry x="40" y="160" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_supp_check" value="&lt;b&gt;Contrôle Liste Noire (O(1))&lt;/b&gt;&lt;br&gt;Vérifie dans Suppressions.&lt;br&gt;Si trouvé: Rejet immédiat" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEE2E2;strokeColor=#DC2626;fontColor=#991B1B;fontSize=11;" vertex="1" parent="grp_ingestion">
+          <mxGeometry x="40" y="280" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_mongo_save" value="&lt;b&gt;Persistance Initiale&lt;/b&gt;&lt;br&gt;MongoDB &lt;i&gt;emails&lt;/i&gt;&lt;br&gt;statut: &lt;b&gt;&quot;queued&quot;&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1FAE5;strokeColor=#059669;fontColor=#064E3B;fontSize=11;" vertex="1" parent="grp_ingestion">
+          <mxGeometry x="25" y="400" width="230" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node_resp_202" value="&lt;b style=&quot;color:#059669;&quot;&gt;HTTP 202 Accepted&lt;/b&gt;&lt;br&gt;{ id: &quot;email_123&quot;, status: &quot;queued&quot; }&lt;br&gt;&lt;i&gt;Retour immédiat au client&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#10B981;fontColor=#1E293B;fontSize=11;strokeWidth=2;" vertex="1" parent="grp_ingestion">
+          <mxGeometry x="25" y="500" width="230" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="flow_i1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#3B82F6;strokeWidth=2;" edge="1" parent="grp_ingestion" source="node_client_req" target="node_auth_check">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow_i2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#3B82F6;strokeWidth=2;" edge="1" parent="grp_ingestion" source="node_auth_check" target="node_supp_check">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow_i3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#059669;strokeWidth=2;" edge="1" parent="grp_ingestion" source="node_supp_check" target="node_mongo_save">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow_i4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#10B981;strokeWidth=2;" edge="1" parent="grp_ingestion" source="node_mongo_save" target="node_resp_202">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- COLONNE 2 : FILES D'ATTENTE REDIS / BULLMQ -->
+        <mxCell id="grp_queues" value="&lt;b&gt;2. Moteur de Files d'Attente Redis (BullMQ)&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;fontColor=#92400E;rounded=1;shadow=1;startSize=28;" vertex="1" parent="1">
+          <mxGeometry x="370" y="90" width="300" height="780" as="geometry" />
+        </mxCell>
+
+        <mxCell id="q1_send" value="&lt;b style=&quot;font-size: 13px;&quot;&gt;📨 email-send-queue&lt;/b&gt;&lt;hr&gt;&lt;p align=&quot;left&quot; style=&quot;margin:0px;padding:3px;&quot;&gt;• Priorité 1: Auth &amp;amp; OTPs&lt;br&gt;• Priorité 2: Transactionnel&lt;br&gt;• Priorité 3: Marketing / Batch&lt;br&gt;• Concurrence: 20 workers&lt;br&gt;• Retries: 3 essais (Backoff exp)&lt;/p&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#EF4444;fontColor=#991B1B;fontSize=11;" vertex="1" parent="grp_queues">
+          <mxGeometry x="20" y="60" width="260" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="q2_track" value="&lt;b style=&quot;font-size: 13px;&quot;&gt;👁️ email-track-queue&lt;/b&gt;&lt;hr&gt;&lt;p align=&quot;left&quot; style=&quot;margin:0px;padding:3px;&quot;&gt;• Événements Pixel d'ouverture&lt;br&gt;• Clics sur liens réécrits&lt;br&gt;• Extraction IP / User-Agent&lt;br&gt;• Déduplication des bots&lt;br&gt;• Incrément stats atomique&lt;/p&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#78350F;fontSize=11;" vertex="1" parent="grp_queues">
+          <mxGeometry x="20" y="270" width="260" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="q3_webhook" value="&lt;b style=&quot;font-size: 13px;&quot;&gt;🔔 webhook-dispatch-queue&lt;/b&gt;&lt;hr&gt;&lt;p align=&quot;left&quot; style=&quot;margin:0px;padding:3px;&quot;&gt;• Appels HTTP POST sortants&lt;br&gt;• Signature HMAC SHA256&lt;br&gt;• Événements: sent, delivered, bounced, opened, clicked&lt;br&gt;• Retries: 5 essais avec backoff&lt;/p&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#4C1D95;fontSize=11;" vertex="1" parent="grp_queues">
+          <mxGeometry x="20" y="470" width="260" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="q_dlq" value="&lt;b style=&quot;color:#DC2626;&quot;&gt;☠️ Dead Letter Queue (DLQ)&lt;/b&gt;&lt;br&gt;Jobs en échec irrécupérable&lt;br&gt;Audit &amp;amp; Alerte Administrateur" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEE2E2;strokeColor=#B91C1C;fontColor=#7F1D1D;fontSize=11;" vertex="1" parent="grp_queues">
+          <mxGeometry x="20" y="660" width="260" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- COLONNE 3 : WORKERS POOL & TRANSPORTERS -->
+        <mxCell id="grp_workers" value="&lt;b&gt;3. Pool de Workers &amp;amp; Exécution&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#A855F7;fontColor=#6B21A8;rounded=1;shadow=1;startSize=28;" vertex="1" parent="1">
+          <mxGeometry x="710" y="90" width="270" height="780" as="geometry" />
+        </mxCell>
+
+        <mxCell id="w_step1" value="&lt;b&gt;1. Compilation Template&lt;/b&gt;&lt;br&gt;Handlebars + Variables&lt;br&gt;Minification HTML" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#A855F7;fontColor=#1E293B;fontSize=11;" vertex="1" parent="grp_workers">
+          <mxGeometry x="25" y="50" width="220" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="w_step2" value="&lt;b&gt;2. Injection de Tracking&lt;/b&gt;&lt;br&gt;Pixel 1x1 invisible (GIF)&lt;br&gt;Wrapping liens http://track/click&lt;br&gt;Headers DKIM &amp;amp; Return-Path" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#A855F7;fontColor=#1E293B;fontSize=11;" vertex="1" parent="grp_workers">
+          <mxGeometry x="25" y="130" width="220" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="w_step3" value="&lt;b&gt;3. Sélecteur Transport&lt;/b&gt;&lt;br&gt;• Dev : Mailpit (SMTP 1025)&lt;br&gt;• Prod : AWS SES / SMTP&lt;br&gt;Envoi RFC 5322" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#A855F7;fontColor=#1E293B;fontSize=11;" vertex="1" parent="grp_workers">
+          <mxGeometry x="25" y="220" width="220" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="w_track_proc" value="&lt;b&gt;Tracking Processor&lt;/b&gt;&lt;br&gt;Consigne dans &lt;i&gt;email_events&lt;/i&gt;&lt;br&gt;Met à jour &lt;i&gt;emails.stats&lt;/i&gt;&lt;br&gt;Pousse vers Webhooks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#78350F;fontSize=11;" vertex="1" parent="grp_workers">
+          <mxGeometry x="25" y="380" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="w_hook_proc" value="&lt;b&gt;Webhook Dispatcher&lt;/b&gt;&lt;br&gt;Appel HTTP POST vers Client&lt;br&gt;Vérification timeout (5s)&lt;br&gt;Enregistre livraison dans DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#4C1D95;fontSize=11;" vertex="1" parent="grp_workers">
+          <mxGeometry x="25" y="550" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- COLONNE 4 : EXTERNAL & DESTINATIONS -->
+        <mxCell id="grp_external" value="&lt;b&gt;4. Destinations &amp;amp; Réception&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#334155;rounded=1;shadow=1;startSize=28;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="90" width="240" height="780" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ext_inbox" value="&lt;b&gt;Boîtes de Réception&lt;/b&gt;&lt;br&gt;Gmail, Outlook, Mailpit&lt;br&gt;&lt;i&gt;Email reçu &amp;amp; affiché&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#64748B;fontColor=#1E293B;fontSize=11;" vertex="1" parent="grp_external">
+          <mxGeometry x="20" y="150" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ext_tracking_srv" value="&lt;b&gt;Serveur de Tracking&lt;/b&gt;&lt;br&gt;• GET /v1/track/open/:t&lt;br&gt;• GET /v1/track/click/:t&lt;br&gt;&lt;i&gt;Réponse &amp;lt; 5ms&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#78350F;fontSize=11;" vertex="1" parent="grp_external">
+          <mxGeometry x="20" y="380" width="200" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ext_client_srv" value="&lt;b&gt;Serveurs Clients&lt;/b&gt;&lt;br&gt;https://client.com/webhook&lt;br&gt;&lt;i&gt;Reçoit le JSON d'alerte&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#4C1D95;fontSize=11;" vertex="1" parent="grp_external">
+          <mxGeometry x="20" y="550" width="200" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- CONNECTEURS ENTRE COLONNES -->
+        <mxCell id="pipe_conn1" value="Push Job" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#EF4444;strokeWidth=2;fontColor=#991B1B;" edge="1" parent="1" source="node_mongo_save" target="q1_send">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pipe_conn2" value="Dépile" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#A855F7;strokeWidth=2;fontColor=#6B21A8;" edge="1" parent="1" source="q1_send" target="w_step1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pipe_conn3" value="Envoi" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#64748B;strokeWidth=2;fontColor=#334155;" edge="1" parent="1" source="w_step3" target="ext_inbox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pipe_conn4" value="Ouverture / Clic" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#D97706;strokeWidth=2;fontColor=#78350F;" edge="1" parent="1" source="ext_inbox" target="ext_tracking_srv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pipe_conn5" value="Enqueue Track" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#D97706;strokeWidth=2;fontColor=#78350F;" edge="1" parent="1" source="ext_tracking_srv" target="q2_track">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pipe_conn6" value="Dépile Track" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#D97706;strokeWidth=2;fontColor=#78350F;" edge="1" parent="1" source="q2_track" target="w_track_proc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pipe_conn7" value="Déclenche Hook" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#7C3AED;strokeWidth=2;fontColor=#4C1D95;" edge="1" parent="1" source="w_track_proc" target="q3_webhook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pipe_conn8" value="Dépile Hook" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#7C3AED;strokeWidth=2;fontColor=#4C1D95;" edge="1" parent="1" source="q3_webhook" target="w_hook_proc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pipe_conn9" value="Appel HTTP POST" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#7C3AED;strokeWidth=2;fontColor=#4C1D95;" edge="1" parent="1" source="w_hook_proc" target="ext_client_srv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pipe_conn_dlq" value="Si échec final" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#DC2626;strokeWidth=2;fontColor=#991B1B;dashed=1;" edge="1" parent="1" source="w_step3" target="q_dlq">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="845" y="785" />
+              <mxPoint x="520" y="785" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

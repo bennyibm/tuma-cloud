@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Base de données NoSQL principale (MongoDB 7)
+  mongodb:
+    image: mongo:7.0
+    container_name: tuma_mongodb
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_DATABASE: tuma_db
+    volumes:
+      - tuma_mongo_data:/data/db
+    networks:
+      - tuma_network
+
+  # Interface Web d'Exploration MongoDB (Mongo Express)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: tuma_mongo_express
+    restart: unless-stopped
+    ports:
+      - '8081:8081'
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH: 'false'
+    depends_on:
+      - mongodb
+    networks:
+      - tuma_network
+
+  # Moteur de Cache In-Memory & Files d'Attente BullMQ (Redis 7)
+  redis:
+    image: redis:7.2-alpine
+    container_name: tuma_redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - tuma_redis_data:/data
+    networks:
+      - tuma_network
+
+  # Serveur SMTP Local de Développement & Visualiseur de Mails (Mailpit)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: tuma_mailpit
+    restart: unless-stopped
+    ports:
+      - '1025:1025' # Port SMTP d'envoi
+      - '8025:8025' # Interface Web d'inspection
+    environment:
+      MP_MAX_MESSAGES: 1000
+      MP_SMTP_AUTH_ALLOW_INSECURE: 'true'
+      MP_SMTP_AUTH_ACCEPT_ANY: 'true'
+    networks:
+      - tuma_network
+
+networks:
+  tuma_network:
+    driver: bridge
+
+volumes:
+  tuma_mongo_data:
+  tuma_redis_data:

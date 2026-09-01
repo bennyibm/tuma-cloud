@@ -1,0 +1,26 @@
+{
+  "name": "@tuma/sdk",
+  "version": "1.0.0",
+  "description": "Official Node.js and TypeScript SDK for TUMA Email Platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "tuma",
+    "email",
+    "cpaas",
+    "resend",
+    "transactional-email",
+    "sdk",
+    "africa"
+  ],
+  "author": "TUMA Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "typescript": "^5.8.2"
+  }
+}

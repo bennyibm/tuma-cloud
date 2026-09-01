@@ -1,0 +1,25 @@
+{
+  "name": "tuma-cloud-monorepo",
+  "version": "1.0.0",
+  "description": "TUMA Cloud — The Lightning-Fast Transactional Email Infrastructure for Africa and the World",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build:all": "npm run build --prefix apps/api && npm run build --prefix apps/dashboard && npm run build --prefix apps/web",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "seed": "cd apps/api && node dist/main.js"
+  },
+  "keywords": [
+    "email",
+    "transactional-email",
+    "fintech",
+    "dkim",
+    "africa",
+    "telecom",
+    "resend",
+    "sendgrid"
+  ],
+  "author": "TUMA Cloud Inc.",
+  "license": "MIT"
+}

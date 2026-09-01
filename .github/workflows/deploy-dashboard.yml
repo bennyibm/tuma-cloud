@@ -1,0 +1,41 @@
+name: 📊 Deploy Dashboard Console (Vercel)
+
+on:
+  push:
+    paths:
+      - 'apps/dashboard/**'
+      - '.github/workflows/deploy-dashboard.yml'
+    branches:
+      - main
+      - prod/dashboard
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: 🚀 Build & Deploy to Vercel (apps/dashboard)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'apps/dashboard/package.json'
+
+      - name: Install Dependencies & Build
+        run: |
+          cd apps/dashboard
+          npm install
+          npm run build
+
+      - name: Deploy to Vercel Production
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_DASHBOARD }}
+          working-directory: ./apps/dashboard
+          vercel-args: '--prod'

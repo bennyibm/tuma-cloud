@@ -1,0 +1,171 @@
+<mxfile host="app.diagrams.net" modified="2026-08-27T10:15:00.000Z" agent="Antigravity" version="21.0.0" type="device">
+  <diagram id="diag_functional_arch" name="Architecture Fonctionnelle">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1350" pageHeight="950" background="#F8FAFC">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TITRE -->
+        <mxCell id="title_func" value="&lt;b style=&quot;font-size: 20px;&quot;&gt;🧩 Architecture Fonctionnelle de la Plateforme d'Emails&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="380" y="20" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- BLOC 1: GESTION IDENTITÉ & SÉCURITÉ -->
+        <mxCell id="fn_sec" value="&lt;b style=&quot;font-size: 13px;&quot;&gt;🔐 1. Sécurité &amp;amp; Accès&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#3B82F6;fontColor=#1E3A8A;rounded=1;shadow=1;startSize=26;" vertex="1" parent="1">
+          <mxGeometry x="50" y="80" width="280" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_sec_1" value="• &lt;b&gt;Gestion des Clés API&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Clés secrètes (sk_) &amp;amp; publiques (pk_)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3B82F6;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_sec">
+          <mxGeometry x="15" y="38" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_sec_2" value="• &lt;b&gt;Contrôle d'Origine CORS&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Whitelist strict pour les formulaires" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3B82F6;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_sec">
+          <mxGeometry x="15" y="86" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_sec_3" value="• &lt;b&gt;Limitation de Débit (Rate Limit)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Algorithme Token Bucket / IP &amp;amp; Clé" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3B82F6;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_sec">
+          <mxGeometry x="15" y="134" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_sec_4" value="• &lt;b&gt;Anti-Abus &amp;amp; Captcha&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Honeypot &amp;amp; Cloudflare Turnstile" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3B82F6;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_sec">
+          <mxGeometry x="15" y="180" width="250" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- BLOC 2: GESTION DOMAINES & DÉLIVRABILITÉ -->
+        <mxCell id="fn_dom" value="&lt;b style=&quot;font-size: 13px;&quot;&gt;🌐 2. Domaines &amp;amp; Délivrabilité&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;fontColor=#065F46;rounded=1;shadow=1;startSize=26;" vertex="1" parent="1">
+          <mxGeometry x="360" y="80" width="290" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_dom_1" value="• &lt;b&gt;Génération Clés DKIM&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Paires RSA 2048 / Ed25519" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#10B981;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_dom">
+          <mxGeometry x="15" y="38" width="260" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_dom_2" value="• &lt;b&gt;Configuration Return-Path &amp;amp; SPF&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;CNAME personnalisé de rebond" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#10B981;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_dom">
+          <mxGeometry x="15" y="86" width="260" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_dom_3" value="• &lt;b&gt;Vérificateur DNS Automatique&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Poller DNS (TXT, CNAME, MX)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#10B981;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_dom">
+          <mxGeometry x="15" y="134" width="260" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_dom_4" value="• &lt;b&gt;Validation DMARC&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Conformité de politique de domaine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#10B981;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_dom">
+          <mxGeometry x="15" y="180" width="260" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- BLOC 3: MODÈLES & GABARITS -->
+        <mxCell id="fn_tmpl" value="&lt;b style=&quot;font-size: 13px;&quot;&gt;📑 3. Templates &amp;amp; Rendu&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#A855F7;fontColor=#6B21A8;rounded=1;shadow=1;startSize=26;" vertex="1" parent="1">
+          <mxGeometry x="680" y="80" width="290" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_tmpl_1" value="• &lt;b&gt;Compilateur Handlebars&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Interpolation {{var}} et blocs conditionnels" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#A855F7;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_tmpl">
+          <mxGeometry x="15" y="38" width="260" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_tmpl_2" value="• &lt;b&gt;Validation des Variables Requises&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Schémas stricts avant injection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#A855F7;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_tmpl">
+          <mxGeometry x="15" y="86" width="260" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_tmpl_3" value="• &lt;b&gt;Génération Fallback Plain-Text&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Extraction automatique HTML vers texte" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#A855F7;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_tmpl">
+          <mxGeometry x="15" y="134" width="260" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_tmpl_4" value="• &lt;b&gt;Minification &amp;amp; Inlining CSS&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Optimisation pour clients mails stricts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#A855F7;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_tmpl">
+          <mxGeometry x="15" y="180" width="260" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- BLOC 4: LISTE DE SUPPRESSION & RÉPUTATION -->
+        <mxCell id="fn_supp" value="&lt;b style=&quot;font-size: 13px;&quot;&gt;🛡️ 4. Suppression &amp;amp; Réputation&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FEE2E2;strokeColor=#EF4444;fontColor=#991B1B;rounded=1;shadow=1;startSize=26;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="80" width="290" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_supp_1" value="• &lt;b&gt;Filtrage Proactif O(1)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Blocage à l'ingestion sans appel SMTP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EF4444;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_supp">
+          <mxGeometry x="15" y="38" width="260" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_supp_2" value="• &lt;b&gt;Ingestion des Hard Bounces&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Auto-suppression des boîtes 550" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EF4444;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_supp">
+          <mxGeometry x="15" y="86" width="260" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_supp_3" value="• &lt;b&gt;Gestion des Plaintes Spam (FBL)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Bannissement immédiat de l'adresse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EF4444;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_supp">
+          <mxGeometry x="15" y="134" width="260" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_supp_4" value="• &lt;b&gt;Désinscription en 1 Clic (RFC 8058)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;List-Unsubscribe header support" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EF4444;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_supp">
+          <mxGeometry x="15" y="180" width="260" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- BLOC 5: INGESTION & PIPELINE D'ENVOI -->
+        <mxCell id="fn_ingest" value="&lt;b style=&quot;font-size: 13px;&quot;&gt;📨 5. Ingestion &amp;amp; Dispatch des Messages&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;fontColor=#92400E;rounded=1;shadow=1;startSize=26;" vertex="1" parent="1">
+          <mxGeometry x="50" y="360" width="410" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_ingest_1" value="• &lt;b&gt;Endpoint REST &amp;amp; SDKs&lt;/b&gt; (POST /v1/emails)&lt;br&gt;&amp;nbsp;&amp;nbsp;Validation DTO, Normalisation des destinataires" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F59E0B;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_ingest">
+          <mxGeometry x="15" y="40" width="380" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_ingest_2" value="• &lt;b&gt;Moteur d'Idempotence Anti-Doublon&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Garantie Exactly-Once pour les paiements &amp;amp; OTPs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F59E0B;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_ingest">
+          <mxGeometry x="15" y="90" width="380" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_ingest_3" value="• &lt;b&gt;Scheduler de Priorités (BullMQ Queues)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Priorité haute (OTPs) vs Priorité standard (Notifications)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F59E0B;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_ingest">
+          <mxGeometry x="15" y="140" width="380" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_ingest_4" value="• &lt;b&gt;Adaptateurs de Transport Interchangeables&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Local Mailpit / AWS SES / Relais SMTP Custom" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F59E0B;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_ingest">
+          <mxGeometry x="15" y="190" width="380" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- BLOC 6: TRACKING & TÉLÉMÉTRIE -->
+        <mxCell id="fn_track" value="&lt;b style=&quot;font-size: 13px;&quot;&gt;👁️ 6. Tracking &amp;amp; Télémétrie en Direct&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#78350F;rounded=1;shadow=1;startSize=26;" vertex="1" parent="1">
+          <mxGeometry x="490" y="360" width="380" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_track_1" value="• &lt;b&gt;Serveur de Pixel d'Ouverture (1x1 GIF)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Réponse ultra-rapide (&amp;lt; 5ms) + Extraction IP/UA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D97706;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_track">
+          <mxGeometry x="15" y="40" width="350" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_track_2" value="• &lt;b&gt;Proxy de Redirection de Clics (HTTP 302)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Wrapping d'URL sécurisé avec token signé" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D97706;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_track">
+          <mxGeometry x="15" y="90" width="350" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_track_3" value="• &lt;b&gt;Filtrage des Robots / Prévisualisations&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Détection des scanners antivirus pour éviter les faux clics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D97706;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_track">
+          <mxGeometry x="15" y="140" width="350" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_track_4" value="• &lt;b&gt;Journal d'Audit Immuable (email_events)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Historique chronologique et timeline d'événements" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D97706;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_track">
+          <mxGeometry x="15" y="190" width="350" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- BLOC 7: WEBHOOKS & NOTIFICATIONS SORTANTES -->
+        <mxCell id="fn_hook" value="&lt;b style=&quot;font-size: 13px;&quot;&gt;🔔 7. Webhooks &amp;amp; Bus d'Événements&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#4C1D95;rounded=1;shadow=1;startSize=26;" vertex="1" parent="1">
+          <mxGeometry x="900" y="360" width="390" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_hook_1" value="• &lt;b&gt;Gestion des Souscriptions d'URLs&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Filtrage par type d'événement (delivered, bounced, opened)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7C3AED;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_hook">
+          <mxGeometry x="15" y="40" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_hook_2" value="• &lt;b&gt;Signature Cryptographique HMAC (SHA256)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Header Resend-Signature pour vérifier l'authenticité" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7C3AED;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_hook">
+          <mxGeometry x="15" y="90" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_hook_3" value="• &lt;b&gt;Retry Exponentiel &amp;amp; Circuit Breaker&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Jusqu'à 5 tentatives en cas de serveur client indisponible" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7C3AED;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_hook">
+          <mxGeometry x="15" y="140" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_hook_4" value="• &lt;b&gt;Journal des Livraisons (webhook_deliveries)&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Audit des codes HTTP reçus et temps de réponse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7C3AED;fontColor=#1E293B;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="fn_hook">
+          <mxGeometry x="15" y="190" width="360" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- BLOC 8: DASHBOARD & OBSERVABILITÉ -->
+        <mxCell id="fn_dash" value="&lt;b style=&quot;font-size: 14px;&quot;&gt;📊 8. Dashboard Web &amp;amp; Reporting (React + Tailwind)&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#475569;fontColor=#0F172A;rounded=1;shadow=1;startSize=28;" vertex="1" parent="1">
+          <mxGeometry x="50" y="650" width="1240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_dash_1" value="&lt;b&gt;Visualiseur de Logs en Direct&lt;/b&gt;&lt;br&gt;Timeline détaillée, Payload JSON, Statut de remise" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#475569;fontColor=#1E293B;fontSize=11;" vertex="1" parent="fn_dash">
+          <mxGeometry x="25" y="45" width="260" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_dash_2" value="&lt;b&gt;Gestionnaire de Domaines DNS&lt;/b&gt;&lt;br&gt;Statuts DKIM, SPF, DMARC et instructions de configuration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#475569;fontColor=#1E293B;fontSize=11;" vertex="1" parent="fn_dash">
+          <mxGeometry x="330" y="45" width="260" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_dash_3" value="&lt;b&gt;Éditeur de Templates &amp;amp; Variables&lt;/b&gt;&lt;br&gt;Prévisualisation en direct avec variables de test" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#475569;fontColor=#1E293B;fontSize=11;" vertex="1" parent="fn_dash">
+          <mxGeometry x="640" y="45" width="260" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_dash_4" value="&lt;b&gt;Gestionnaire de Clés &amp;amp; Webhooks&lt;/b&gt;&lt;br&gt;Génération de clés sk_/pk_, tests de ping webhook" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#475569;fontColor=#1E293B;fontSize=11;" vertex="1" parent="fn_dash">
+          <mxGeometry x="950" y="45" width="260" height="75" as="geometry" />
+        </mxCell>
+
+        <!-- LIENS INTER-FONCTIONNELS -->
+        <mxCell id="c_sec_ing" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#3B82F6;strokeWidth=2;" edge="1" parent="1" source="fn_sec" target="fn_ingest">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_dom_ing" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#10B981;strokeWidth=2;" edge="1" parent="1" source="fn_dom" target="fn_ingest">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_tmpl_ing" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#A855F7;strokeWidth=2;" edge="1" parent="1" source="fn_tmpl" target="fn_ingest">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_supp_ing" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#EF4444;strokeWidth=2;" edge="1" parent="1" source="fn_supp" target="fn_ingest">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_ing_track" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#F59E0B;strokeWidth=2;" edge="1" parent="1" source="fn_ingest" target="fn_track">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c_track_hook" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#7C3AED;strokeWidth=2;" edge="1" parent="1" source="fn_track" target="fn_hook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
