@@ -20,24 +20,44 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
       envFilePath: '../../.env',
     }),
 
-    // Connexion MongoDB
+    // Connexion MongoDB (Supporte MONGODB_URI et MONGO_URI)
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO_URI', 'mongodb://localhost:27017/tuma_db'),
+        uri:
+          configService.get<string>('MONGODB_URI') ||
+          configService.get<string>('MONGO_URI') ||
+          'mongodb://localhost:27017/tuma_db',
       }),
       inject: [ConfigService],
     }),
 
-    // Connexion Redis / BullMQ
+    // Connexion Redis / BullMQ (Supporte REDIS_URL, REDIS_HOST/PORT/PASSWORD et TLS pour Upstash)
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        connection: {
-          host: configService.get<string>('REDIS_HOST', 'localhost'),
-          port: configService.get<number>('REDIS_PORT', 6379),
-        },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const redisUrl = configService.get<string>('REDIS_URL');
+        if (redisUrl) {
+          return { connection: { url: redisUrl } };
+        }
+
+        const host = configService.get<string>('REDIS_HOST', 'localhost');
+        const port = Number(configService.get<number>('REDIS_PORT', 6379));
+        const password = configService.get<string>('REDIS_PASSWORD');
+        const isTls =
+          configService.get<string>('REDIS_TLS') === 'true' ||
+          host.includes('upstash.io') ||
+          host.includes('rediss://');
+
+        return {
+          connection: {
+            host,
+            port,
+            ...(password ? { password } : {}),
+            ...(isTls ? { tls: {} } : {}),
+          },
+        };
+      },
       inject: [ConfigService],
     }),
 
