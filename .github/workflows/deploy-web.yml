@@ -32,6 +32,9 @@ jobs:
           npm run build
 
       - name: Deploy to Vercel Production
+        if: env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -39,3 +42,10 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
           working-directory: ./apps/web
           vercel-args: '--prod'
+
+      - name: Native Vercel Notice
+        if: env.VERCEL_TOKEN == ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "ℹ️ VERCEL_TOKEN non défini : le déploiement est géré nativement par l'intégration Git de Vercel."
