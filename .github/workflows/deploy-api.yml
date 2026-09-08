@@ -32,8 +32,15 @@ jobs:
           npm install
           npm run build
 
-      - name: Trigger Render Deploy Hook
+      - name: Trigger Render Deploy Hook (Optional)
         if: success()
+        env:
+          HOOK_URL: ${{ secrets.RENDER_API_DEPLOY_HOOK }}
         run: |
-          echo "Triggering Render Production Deployment Hook..."
-          curl -f -X POST "${{ secrets.RENDER_API_DEPLOY_HOOK }}"
+          if [ -n "$HOOK_URL" ]; then
+            echo "Triggering Render Production Deployment Hook..."
+            curl -f -X POST "$HOOK_URL"
+          else
+            echo "ℹ️ Note : RENDER_API_DEPLOY_HOOK non défini dans les secrets GitHub."
+            echo "L'intégration native Render déploie déjà automatiquement ce commit."
+          fi
