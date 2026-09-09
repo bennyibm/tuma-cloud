@@ -17,6 +17,7 @@ import { Template, TemplateDocument } from '../../schemas/template.schema';
 import { ApiKey, ApiKeyDocument } from '../../schemas/api-key.schema';
 import { SuppressionsService } from '../suppressions/suppressions.service';
 import { AuthService } from '../auth/auth.service';
+import { ConfigService } from '@nestjs/config';
 import { SendEmailDto } from './dto/send-email.dto';
 import { ClientSendDto } from './dto/client-send.dto';
 import { EmailJobData, EmailSendProcessor } from '../queues/email-send.processor';
@@ -33,6 +34,7 @@ export class EmailsService implements OnApplicationBootstrap {
     private readonly suppressionsService: SuppressionsService,
     private readonly authService: AuthService,
     private readonly emailSendProcessor: EmailSendProcessor,
+    private readonly configService: ConfigService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -246,7 +248,11 @@ export class EmailsService implements OnApplicationBootstrap {
     }
 
     // 6. Détermination des adresses
-    const senderFrom = `Tuma Contact <contact@tuma.dev>`;
+    const defaultFrom =
+      this.configService.get<string>('SMTP_FROM') ||
+      this.configService.get<string>('DEFAULT_FROM_EMAIL') ||
+      'Tuma Contact <contact@tuma.dev>';
+    const senderFrom = defaultFrom;
     const recipientTo = dto.recipientEmail ? [dto.recipientEmail] : ['support@tuma.dev'];
 
     // 7. Enregistrement de l'email et mise en file

@@ -55,7 +55,16 @@ export class MailpitTransporter implements ITransporter {
         rawResponse: result,
       };
     } catch (err: any) {
-      // Si le serveur SMTP n'est pas joignable (ex: déploiement cloud sans Mailpit local)
+      const isExternalSmtpConfigured =
+        (this.host !== 'localhost' && this.host !== '127.0.0.1') ||
+        Boolean(this.configService.get<string>('SMTP_USER'));
+
+      if (isExternalSmtpConfigured) {
+        this.logger.error(`[SMTP Relay Error] Échec de l'envoi réel via ${this.host}:${this.port}: ${err.message}`);
+        throw err;
+      }
+
+      // Si aucun relais SMTP réel n'est configuré (mode développement local sans Mailpit) : simulation
       if (
         err.code === 'ECONNREFUSED' ||
         err.code === 'ESOCKET' ||
@@ -64,7 +73,7 @@ export class MailpitTransporter implements ITransporter {
       ) {
         const simulatedMessageId = `<tuma-edge-${Date.now()}-${Math.random().toString(36).substring(7)}@tuma.eldnet.tech>`;
         this.logger.warn(
-          `[SMTP Fallback] Relais SMTP local non joignable (${this.host}:${this.port}). Délivrance validée via TUMA Cloud Edge Simulator (MessageID: ${simulatedMessageId})`,
+          `[SMTP Simulation] Aucun serveur SMTP externe configuré (${this.host}:${this.port}). Délivrance simulée (MessageID: ${simulatedMessageId})`,
         );
 
         return {
