@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Lock,
 } from 'lucide-react';
+import { ENV } from '../config/env';
 
 export const FeatureShowcase: React.FC = () => {
   const [activeTab, setActiveTab] = useState<number>(0);
@@ -156,7 +157,7 @@ export const FeatureShowcase: React.FC = () => {
 
               <div className="pt-2">
                 <a
-                  href="http://localhost:5173/register"
+                  href={`${ENV.DASHBOARD_URL}/register`}
                   className="inline-flex items-center gap-2 text-xs font-bold text-[#10B981] hover:underline"
                 >
                   <span>Tester cette fonctionnalité sur le Dashboard</span>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Radio, ArrowLeft, ArrowRight, CheckCircle2, Globe, Shield, Activity, Zap } from 'lucide-react';
+import { ENV } from '../../config/env';
 
 export const RadarPage: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
   const isps = [
@@ -128,7 +129,7 @@ export const RadarPage: React.FC<{ onNavigate: (path: string) => void }> = ({ on
             <p className="text-xs text-[#9CA3AF] mt-1">Configurez vos enregistrements DNS en 2 minutes.</p>
           </div>
           <a
-            href="http://localhost:5173/domains"
+            href={`${ENV.DASHBOARD_URL}/domains`}
             className="px-6 py-3 rounded-xl bg-[#06B6D4] hover:bg-[#0891B2] text-white text-xs font-bold shadow-md flex items-center gap-2"
           >
             <span>Configurer un Domaine</span>

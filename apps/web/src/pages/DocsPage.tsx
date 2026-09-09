@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Code,
 } from 'lucide-react';
+import { ENV } from '../config/env';
 
 export const DocsPage: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
   const [activeSection, setActiveSection] = useState<string>('quickstart');
@@ -68,7 +69,7 @@ export const DocsPage: React.FC<{ onNavigate: (path: string) => void }> = ({ onN
 
             <div className="pt-4 border-t border-[#1F2937] mt-3">
               <a
-                href="http://localhost:5173/playground"
+                href={`${ENV.DASHBOARD_URL}/playground`}
                 className="w-full py-2 px-3 rounded-xl bg-[#111827] text-white text-xs font-semibold flex items-center justify-between hover:bg-[#1F2937] border border-[#1F2937]"
               >
                 <span>Ouvrir le Playground</span>

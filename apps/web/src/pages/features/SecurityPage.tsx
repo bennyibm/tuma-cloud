@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShieldCheck, ArrowLeft, ArrowRight, CheckCircle2, Lock, Key, Globe, FileCode } from 'lucide-react';
+import { ENV } from '../../config/env';
 
 export const SecurityPage: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
   return (
@@ -73,7 +74,7 @@ export const SecurityPage: React.FC<{ onNavigate: (path: string) => void }> = ({
             <p className="text-xs text-[#9CA3AF] mt-1">Créez votre première clé API avec IP Whitelist en 1 clic.</p>
           </div>
           <a
-            href="http://localhost:5173/webhooks"
+            href={`${ENV.DASHBOARD_URL}/webhooks`}
             className="px-6 py-3 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white text-xs font-bold shadow-md flex items-center gap-2"
           >
             <span>Gérer les Clés API</span>

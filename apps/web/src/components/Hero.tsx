@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Radio,
 } from 'lucide-react';
+import { ENV } from '../config/env';
 
 export const Hero: React.FC = () => {
   const [activeLang, setActiveLang] = useState<'node' | 'python' | 'curl' | 'go' | 'php'>('node');
@@ -135,7 +136,7 @@ $result = $tuma->emails->send([
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
               <a
-                href="http://localhost:5173/register"
+                href={`${ENV.DASHBOARD_URL}/register`}
                 className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white text-sm font-bold shadow-glow-emerald flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5"
               >
                 <span>Créer un Compte Gratuit</span>

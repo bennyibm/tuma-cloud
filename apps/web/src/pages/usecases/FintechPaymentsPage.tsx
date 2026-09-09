@@ -12,6 +12,7 @@ import {
   Activity,
   FileCheck,
 } from 'lucide-react';
+import { ENV } from '../../config/env';
 
 export const FintechPaymentsPage: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
   return (
@@ -153,7 +154,7 @@ export const FintechPaymentsPage: React.FC<{ onNavigate: (path: string) => void 
             <p className="text-xs text-[#9CA3AF] mt-1">Créez votre compte développeur ou parlez à notre équipe de Kinshasa.</p>
           </div>
           <a
-            href="http://localhost:5173/register"
+            href={`${ENV.DASHBOARD_URL}/register`}
             className="px-6 py-3 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white text-xs font-bold shadow-md flex items-center gap-2"
           >
             <span>Démarrer Gratuitement</span>

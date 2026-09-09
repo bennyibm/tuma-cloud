@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   Rocket,
 } from 'lucide-react';
+import { ENV } from '../config/env';
 
 interface NavbarProps {
   currentPath: string;
@@ -239,13 +240,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate }) => {
         {/* Action CTAs */}
         <div className="hidden md:flex items-center gap-3">
           <a
-            href="http://localhost:5173/login"
+            href={`${ENV.DASHBOARD_URL}/login`}
             className="px-4 py-2 text-xs font-semibold text-white hover:text-[#10B981] transition-colors"
           >
             Connexion
           </a>
           <a
-            href="http://localhost:5173/register"
+            href={`${ENV.DASHBOARD_URL}/register`}
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white text-xs font-bold shadow-glow-emerald flex items-center gap-1.5 transition-all group"
           >
             <span>Démarrer Gratuitement</span>
@@ -331,13 +332,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate }) => {
 
           <div className="pt-4 border-t border-[#1F2937] flex flex-col gap-2">
             <a
-              href="http://localhost:5173/login"
+              href={`${ENV.DASHBOARD_URL}/login`}
               className="w-full text-center py-2.5 text-xs font-semibold text-white bg-[#111827] rounded-xl border border-[#1F2937]"
             >
               Connexion au Dashboard
             </a>
             <a
-              href="http://localhost:5173/register"
+              href={`${ENV.DASHBOARD_URL}/register`}
               className="w-full text-center py-2.5 text-xs font-bold text-white bg-[#10B981] rounded-xl shadow-glow-emerald"
             >
               Démarrer Gratuitement

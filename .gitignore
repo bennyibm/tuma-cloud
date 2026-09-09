@@ -44,3 +44,7 @@ Thumbs.db
 # Vercel & Docker
 .vercel/
 *.tar
+
+# Playwright & E2E Testing
+test-results/
+playwright-report/

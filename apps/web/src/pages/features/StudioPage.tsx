@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles, ArrowLeft, ArrowRight, CheckCircle2, ShieldAlert, FileCode, Palette } from 'lucide-react';
+import { ENV } from '../../config/env';
 
 export const StudioPage: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
   return (
@@ -103,7 +104,7 @@ export const StudioPage: React.FC<{ onNavigate: (path: string) => void }> = ({ o
             <p className="text-xs text-[#9CA3AF] mt-1">Choisissez parmi plus de 12 modèles professionnels Canva Pro.</p>
           </div>
           <a
-            href="http://localhost:5173/templates"
+            href={`${ENV.DASHBOARD_URL}/templates`}
             className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md flex items-center gap-2"
           >
             <span>Ouvrir le Studio Visuel</span>

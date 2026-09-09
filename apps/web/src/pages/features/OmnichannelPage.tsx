@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageSquare, ArrowLeft, ArrowRight, CheckCircle2, Smartphone, Zap, Clock, ShieldCheck } from 'lucide-react';
+import { ENV } from '../../config/env';
 
 export const OmnichannelPage: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
   return (
@@ -97,7 +98,7 @@ export const OmnichannelPage: React.FC<{ onNavigate: (path: string) => void }> =
             <p className="text-xs text-[#9CA3AF] mt-1">Disponible sur tous les forfaits Pro et Entreprise.</p>
           </div>
           <a
-            href="http://localhost:5173/register"
+            href={`${ENV.DASHBOARD_URL}/register`}
             className="px-6 py-3 rounded-xl bg-[#FF6B00] hover:bg-[#E05E00] text-white text-xs font-bold shadow-md flex items-center gap-2"
           >
             <span>Activer la Bascule</span>

@@ -10,6 +10,7 @@ import {
   Clock,
   Package,
 } from 'lucide-react';
+import { ENV } from '../../config/env';
 
 export const EcommerceLogisticsPage: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
   return (
@@ -119,7 +120,7 @@ export const EcommerceLogisticsPage: React.FC<{ onNavigate: (path: string) => vo
             <p className="text-xs text-[#9CA3AF] mt-1">Créez votre compte en 30 secondes et intégrez nos modèles e-commerce.</p>
           </div>
           <a
-            href="http://localhost:5173/register"
+            href={`${ENV.DASHBOARD_URL}/register`}
             className="px-6 py-3 rounded-xl bg-[#FF6B00] hover:bg-[#E05E00] text-white text-xs font-bold shadow-md flex items-center gap-2"
           >
             <span>Démarrer Gratuitement</span>

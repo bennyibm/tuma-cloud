@@ -1,5 +1,6 @@
 import React from 'react';
 import { ExternalLink } from 'lucide-react';
+import { ENV } from '../config/env';
 
 interface FooterProps {
   onNavigate: (path: string) => void;
@@ -135,9 +136,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div className="space-y-3">
             <h4 className="font-bold text-white uppercase text-[11px] tracking-wider">Plateforme</h4>
             <ul className="space-y-2">
-              <li><a href="http://localhost:5173/login" className="hover:text-white transition-colors">Connexion Console</a></li>
-              <li><a href="http://localhost:5173/register" className="hover:text-white transition-colors">Créer un Compte Pro</a></li>
-              <li><a href="http://localhost:5173/playground" className="hover:text-white transition-colors">Playground d Envoi</a></li>
+              <li><a href={`${ENV.DASHBOARD_URL}/login`} className="hover:text-white transition-colors">Connexion Console</a></li>
+              <li><a href={`${ENV.DASHBOARD_URL}/register`} className="hover:text-white transition-colors">Créer un Compte Pro</a></li>
+              <li><a href={`${ENV.DASHBOARD_URL}/playground`} className="hover:text-white transition-colors">Playground d Envoi</a></li>
               <li><span className="text-[#6B7280]">Conformité OHADA & BCC</span></li>
             </ul>
           </div>
@@ -148,8 +149,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             © {new Date().getFullYear()} TUMA Cloud Inc. Tous droits réservés. Développé pour l'infrastructure FinTech.
           </div>
           <div className="flex items-center gap-4">
-            <a href="http://localhost:5173/login" className="hover:text-white">Connexion</a>
-            <a href="http://localhost:5173/register" className="hover:text-white">Créer un Compte</a>
+            <a href={`${ENV.DASHBOARD_URL}/login`} className="hover:text-white">Connexion</a>
+            <a href={`${ENV.DASHBOARD_URL}/register`} className="hover:text-white">Créer un Compte</a>
           </div>
         </div>
       </div>

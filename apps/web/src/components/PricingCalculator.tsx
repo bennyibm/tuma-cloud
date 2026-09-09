@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Check, ArrowRight, Sparkles, Zap, Shield, CreditCard, Smartphone } from 'lucide-react';
+import { ENV } from '../config/env';
 
 export const PricingCalculator: React.FC = () => {
   const [currency, setCurrency] = useState<'USD' | 'CDF'>('USD');
@@ -27,7 +28,7 @@ export const PricingCalculator: React.FC = () => {
       ],
       popular: false,
       cta: 'Commencer Gratuitement',
-      href: 'http://localhost:5173/register',
+      href: `${ENV.DASHBOARD_URL}/register`,
     },
     {
       name: 'Starter FinTech',
@@ -45,7 +46,7 @@ export const PricingCalculator: React.FC = () => {
       ],
       popular: false,
       cta: 'Choisir Starter',
-      href: 'http://localhost:5173/register',
+      href: `${ENV.DASHBOARD_URL}/register`,
     },
     {
       name: 'Pro Entreprise',
@@ -63,7 +64,7 @@ export const PricingCalculator: React.FC = () => {
       ],
       popular: true,
       cta: 'Démarrer avec Pro',
-      href: 'http://localhost:5173/register',
+      href: `${ENV.DASHBOARD_URL}/register`,
     },
     {
       name: 'Scale & Banques',
@@ -81,7 +82,7 @@ export const PricingCalculator: React.FC = () => {
       ],
       popular: false,
       cta: 'Contacter l Équipe Scale',
-      href: 'http://localhost:5173/register',
+      href: `${ENV.DASHBOARD_URL}/register`,
     },
   ];
 

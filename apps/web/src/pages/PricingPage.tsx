@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, ArrowRight, CreditCard, Smartphone, Zap, Shield, Sparkles, HelpCircle } from 'lucide-react';
 import { PricingCalculator } from '../components/PricingCalculator';
+import { ENV } from '../config/env';
 
 export const PricingPage: React.FC<{ onNavigate: (path: string) => void }> = ({ onNavigate }) => {
   const [sliderVolume, setSliderVolume] = useState<number>(50000);
@@ -91,7 +92,7 @@ export const PricingPage: React.FC<{ onNavigate: (path: string) => void }> = ({ 
                 <div className="text-3xl font-black text-[#10B981] font-mono">{formattedPrice}</div>
               </div>
               <a
-                href="http://localhost:5173/register"
+                href={`${ENV.DASHBOARD_URL}/register`}
                 className="px-6 py-3 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white text-xs font-bold shadow-glow-emerald flex items-center gap-2"
               >
                 <span>Souscrire ce Forfait</span>
