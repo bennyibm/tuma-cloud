@@ -41,6 +41,75 @@ export class MailpitTransporter implements ITransporter {
   async send(options: SendMailOptions): Promise<SendMailResult> {
     this.logger.log(`Envoi de l'email à destination de : ${options.to.join(', ')}`);
 
+    // 1. Support natif Resend via HTTPS API (Port 443 - Jamais bloqué par Render Free)
+    const resendApiKey = this.configService.get<string>('RESEND_API_KEY');
+    if (resendApiKey) {
+      this.logger.log(`[HTTP API] Envoi sécurisé via Resend HTTPS API vers ${options.to.join(', ')}`);
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendApiKey.trim()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: options.from,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text,
+          reply_to: options.replyTo,
+        }),
+      });
+
+      const data: any = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || `Erreur Resend API HTTP ${response.status}`);
+      }
+
+      return {
+        providerMessageId: data.id,
+        provider: 'resend',
+        rawResponse: data,
+      };
+    }
+
+    // 2. Support natif Brevo via HTTPS API (Port 443 - Jamais bloqué par Render Free)
+    const brevoApiKey = this.configService.get<string>('BREVO_API_KEY');
+    if (brevoApiKey) {
+      this.logger.log(`[HTTP API] Envoi sécurisé via Brevo HTTPS API vers ${options.to.join(', ')}`);
+      const match = options.from.match(/^(?:(.*?)<)?([^>]+)>?$/);
+      const senderName = match?.[1]?.trim();
+      const senderEmail = match?.[2]?.trim() || options.from;
+
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoApiKey.trim(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: senderName ? { name: senderName, email: senderEmail } : { email: senderEmail },
+          to: options.to.map((email) => ({ email })),
+          subject: options.subject,
+          htmlContent: options.html,
+          textContent: options.text,
+          replyTo: options.replyTo ? { email: options.replyTo } : undefined,
+        }),
+      });
+
+      const data: any = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || `Erreur Brevo API HTTP ${response.status}`);
+      }
+
+      return {
+        providerMessageId: data.messageId || `brevo-${Date.now()}`,
+        provider: 'brevo',
+        rawResponse: data,
+      };
+    }
+
+    // 3. Envoi classique via SMTP (LWS, Gmail, etc.)
     try {
       const result = await this.transporter.sendMail({
         from: options.from,
@@ -57,7 +126,7 @@ export class MailpitTransporter implements ITransporter {
 
       return {
         providerMessageId: result.messageId,
-        provider: this.configService.get<string>('SMTP_PROVIDER', 'mailpit'),
+        provider: this.configService.get<string>('SMTP_PROVIDER', 'smtp_relay'),
         rawResponse: result,
       };
     } catch (err: any) {
