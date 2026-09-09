@@ -15,6 +15,7 @@ import { TemplatesPage } from './pages/TemplatesPage';
 import { BillingPage } from './pages/BillingPage';
 import { PlaygroundPage } from './pages/PlaygroundPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { api } from './services/api';
 
 type AuthView = 'login' | 'register' | 'reset';
@@ -48,7 +49,17 @@ function DashboardApp() {
   const [authView, setAuthView] = useState<AuthView>('login');
   const [currentTab, setCurrentTab] = useState<NavigationTab>(getInitialTab);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [emailCount, setEmailCount] = useState(5);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const completed = localStorage.getItem('tuma_onboarding_completed');
+      if (!completed) {
+        setIsOnboardingOpen(true);
+      }
+    }
+  }, [isAuthenticated]);
 
   const handleSelectTab = (tab: NavigationTab) => {
     setCurrentTab(tab);
@@ -215,6 +226,7 @@ function DashboardApp() {
           title={pageInfo.title}
           subtitle={pageInfo.subtitle}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          onOpenOnboarding={() => setIsOnboardingOpen(true)}
         />
 
         {/* Scrollable Page Content */}
@@ -236,6 +248,13 @@ function DashboardApp() {
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
         onNavigate={(tab) => handleSelectTab(tab)}
+      />
+
+      {/* Interactive Onboarding Walkthrough */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onNavigateTab={(tab) => handleSelectTab(tab)}
       />
     </div>
   );

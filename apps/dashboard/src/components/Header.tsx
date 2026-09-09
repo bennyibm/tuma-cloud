@@ -6,6 +6,8 @@ import {
   User,
   ShieldCheck,
   BookOpen,
+  Compass,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,12 +15,14 @@ interface HeaderProps {
   title: string;
   subtitle: string;
   onOpenCommandPalette: () => void;
+  onOpenOnboarding?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   title,
   subtitle,
   onOpenCommandPalette,
+  onOpenOnboarding,
 }) => {
   const { user, logout } = useAuth();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -47,6 +51,19 @@ export const Header: React.FC<HeaderProps> = ({
             ⌘K
           </kbd>
         </button>
+
+        {/* Onboarding Walkthrough Trigger */}
+        {onOpenOnboarding && (
+          <button
+            type="button"
+            onClick={onOpenOnboarding}
+            className="flex items-center gap-1.5 bg-[#111827] hover:bg-[#1F2937] px-3 py-1.5 rounded-lg border border-[#10B981]/30 hover:border-[#10B981]/60 text-xs text-[#10B981] transition-colors"
+          >
+            <Compass className="w-3.5 h-3.5 text-[#10B981]" />
+            <span className="hidden md:inline font-medium">Guide de Démarrage</span>
+            <span className="md:hidden font-medium">Guide</span>
+          </button>
+        )}
 
         {/* Backend API Live Status */}
         <div className="hidden lg:flex items-center gap-2 bg-[#111827] px-3 py-1.5 rounded-lg border border-[#1F2937] text-xs">
@@ -85,6 +102,20 @@ export const Header: React.FC<HeaderProps> = ({
                   {user?.role || 'Admin'}
                 </span>
               </div>
+
+              {onOpenOnboarding && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    onOpenOnboarding();
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#9CA3AF] hover:text-[#10B981] hover:bg-[#1F2937] rounded-lg transition-colors text-left"
+                >
+                  <Compass className="w-3.5 h-3.5 text-[#10B981]" />
+                  <span>Relancer le Guide (Tour)</span>
+                </button>
+              )}
 
               <a
                 href="https://tuma.eldnet.tech/docs"
