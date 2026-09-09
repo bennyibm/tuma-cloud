@@ -9,7 +9,7 @@
  */
 
 // 1. Définissez votre clé secrète partagée (à renseigner aussi dans LWS_BRIDGE_SECRET sur Render)
-define('TUMA_SECRET', 'tuma_lws_secret_token_change_me_123456789');
+define('TUMA_SECRET', '53252ddafb841d3defe44023c025d56cd308a6dca1776d3f');
 
 // 2. Gestion des en-têtes CORS et JSON
 header('Content-Type: application/json; charset=utf-8');
