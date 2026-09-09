@@ -1,4 +1,4 @@
-# @tuma/react
+# tuma-react
 
 Official React & Next.js SDK for **[TUMA Cloud](https://tuma.eldnet.tech)** — The lightning-fast transactional email infrastructure.
 
@@ -9,11 +9,11 @@ Easily power your contact forms, transactional notifications, and server actions
 ## 📦 Installation
 
 ```bash
-npm install @tuma/react
+npm install tuma-react
 # or
-yarn add @tuma/react
+yarn add tuma-react
 # or
-pnpm add @tuma/react
+pnpm add tuma-react
 ```
 
 ---
@@ -26,7 +26,7 @@ The fastest way to add a functional, spam-protected contact form to your site in
 
 ```tsx
 import React from 'react';
-import { TumaContactForm } from '@tuma/react';
+import { TumaContactForm } from 'tuma-react';
 
 export default function ContactSection() {
   return (
@@ -50,7 +50,7 @@ Bind TUMA directly to your custom HTML/JSX form with automated state handling an
 
 ```tsx
 import React from 'react';
-import { useTumaForm } from '@tuma/react';
+import { useTumaForm } from 'tuma-react';
 
 export function CustomContactForm() {
   const { formProps, honeypotProps, isSubmitting, isSuccess, isError, error } =
@@ -112,7 +112,7 @@ If you manage your own form state (e.g., React Hook Form, Formik, or state varia
 
 ```tsx
 import React, { useState } from 'react';
-import { useTuma } from '@tuma/react';
+import { useTuma } from 'tuma-react';
 
 export function NewsletterSignup() {
   const [email, setEmail] = useState('');
@@ -150,7 +150,7 @@ Avoid re-typing credentials across multiple forms:
 
 ```tsx
 // In main.tsx or app/layout.tsx
-import { TumaProvider } from '@tuma/react';
+import { TumaProvider } from 'tuma-react';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -176,7 +176,7 @@ If you prefer processing form submissions on your Next.js server with your secre
 ```typescript
 'use server';
 
-import { createTumaServerClient } from '@tuma/react/server';
+import { createTumaServerClient } from 'tuma-react/server';
 
 const tuma = createTumaServerClient({
   apiKey: process.env.TUMA_API_KEY!, // tuma_live_...
@@ -204,7 +204,7 @@ export async function submitContactAction(formData: FormData) {
 ### Option B: Built-in Route Handler (`app/api/contact/route.ts`)
 
 ```typescript
-import { tumaContactRouteHandler } from '@tuma/react/server';
+import { tumaContactRouteHandler } from 'tuma-react/server';
 
 export const POST = tumaContactRouteHandler({
   apiKey: process.env.TUMA_API_KEY!,

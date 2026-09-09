@@ -1,5 +1,5 @@
 {
-  "name": "@tuma/react",
+  "name": "tuma-react",
   "version": "1.0.0",
   "description": "Official React & Next.js SDK for TUMA Cloud (Contact forms, hooks, provider & server actions)",
   "main": "dist/index.js",
