@@ -135,20 +135,34 @@ export class EmailsService implements OnApplicationBootstrap {
       attachments: dto.attachments,
     };
 
-    try {
-      await this.emailQueue.add('send-email-job', jobData, {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 5000,
-        },
-        removeOnComplete: true,
-      });
-    } catch (err: any) {
-      this.logger.warn(`BullMQ indisponible (${err.message}). Lancement du traitement direct.`);
-    }
+    // 4. Enqueue non-bloquant dans BullMQ avec bascule immédiate vers processDirect si Redis est lent ou bloqué
+    const enqueueWithTimeout = async () => {
+      try {
+        await Promise.race([
+          this.emailQueue.add('send-email-job', jobData, {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 },
+            removeOnComplete: true,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('BullMQ timeout (800ms)')), 800),
+          ),
+        ]);
+      } catch (err: any) {
+        this.logger.warn(`BullMQ non disponible ou bloqué (${err.message}). Traitement direct immédiat.`);
+        setImmediate(async () => {
+          try {
+            await this.emailSendProcessor.processDirect(jobData);
+          } catch (e: any) {
+            this.logger.error(`Erreur processDirect immédiat: ${e.message}`);
+          }
+        });
+      }
+    };
 
-    // Déclencheur automatique de secours (au cas où Redis est déconnecté ou le worker en pause)
+    enqueueWithTimeout();
+
+    // Déclencheur automatique de secours à 1 seconde
     setTimeout(async () => {
       try {
         const check = await this.emailModel.findById(newEmail._id);
@@ -159,7 +173,7 @@ export class EmailsService implements OnApplicationBootstrap {
       } catch (err: any) {
         this.logger.error(`Erreur auto-dispatcher email ${newEmail._id}: ${err.message}`);
       }
-    }, 500);
+    }, 1000);
 
     return {
       id: newEmail._id.toString(),
@@ -280,17 +294,34 @@ export class EmailsService implements OnApplicationBootstrap {
       variables: dto.variables,
     };
 
-    try {
-      await this.emailQueue.add('send-email-job', jobData, {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: true,
-      });
-    } catch (err: any) {
-      this.logger.warn(`BullMQ indisponible (${err.message}). Lancement du traitement direct.`);
-    }
+    // Enqueue non-bloquant dans BullMQ avec bascule immédiate vers processDirect si Redis est lent ou bloqué
+    const enqueueWithTimeout = async () => {
+      try {
+        await Promise.race([
+          this.emailQueue.add('send-email-job', jobData, {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 },
+            removeOnComplete: true,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('BullMQ timeout (800ms)')), 800),
+          ),
+        ]);
+      } catch (err: any) {
+        this.logger.warn(`BullMQ non disponible ou bloqué (${err.message}). Traitement direct immédiat.`);
+        setImmediate(async () => {
+          try {
+            await this.emailSendProcessor.processDirect(jobData);
+          } catch (e: any) {
+            this.logger.error(`Erreur processDirect immédiat email client: ${e.message}`);
+          }
+        });
+      }
+    };
 
-    // Déclencheur automatique de secours pour le frontend
+    enqueueWithTimeout();
+
+    // Déclencheur automatique de secours pour le frontend à 1 seconde
     setTimeout(async () => {
       try {
         const check = await this.emailModel.findById(newEmail._id);
@@ -301,7 +332,7 @@ export class EmailsService implements OnApplicationBootstrap {
       } catch (err: any) {
         this.logger.error(`Erreur auto-dispatcher email client ${newEmail._id}: ${err.message}`);
       }
-    }, 500);
+    }, 1000);
 
     this.logger.log(`[Frontend Send] Email client expédié via template '${templateDoc.slug}' (ID: ${newEmail._id})`);
     return {

@@ -21,6 +21,12 @@ export class MailpitTransporter implements ITransporter {
       host: this.host,
       port: this.port,
       secure,
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     };
 
     if (user && pass) {
