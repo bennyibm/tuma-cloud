@@ -12,14 +12,16 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { getAuthHeaders, API_BASE } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export const PlaygroundPage: React.FC = () => {
+  const { user } = useAuth();
   const [from, setFrom] = useState('Tuma Notifications <notifications@tuma.dev>');
-  const [to, setTo] = useState('benny@startup-kinshasa.cd');
+  const [to, setTo] = useState(user?.email || 'dev@startup.cd');
   const [enableFallback, setEnableFallback] = useState(false);
   const [fallbackPhone, setFallbackPhone] = useState('+243 81 999 1234');
   const [subject, setSubject] = useState('🚀 Test interactif depuis le Dashboard TUMA, {{name}} !');
-  const [variables, setVariables] = useState('{\n  "name": "Benny",\n  "company": "Kinshasa FinTech"\n}');
+  const [variables, setVariables] = useState(`{\n  "name": "${user?.name || 'Développeur'}",\n  "company": "${user?.company || 'TUMA Cloud'}"\n}`);
   const [html, setHtml] = useState(
     `<div style="font-family: sans-serif; background: #0B0F19; color: #F9FAFB; padding: 32px; border-radius: 12px;">\n  <h1 style="color: #10B981;">Bonjour {{name}} 🚀</h1>\n  <p>Votre email transactionnel expédié via <strong>TUMA Cloud</strong> a été délivré avec succès.</p>\n  <div style="margin: 24px 0;">\n    <a href="https://tuma.dev/dashboard" style="background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Accéder au Dashboard</a>\n  </div>\n  <p style="color: #9CA3AF; font-size: 12px;">Société : {{company}} | Télémétrie 100% active</p>\n</div>`,
   );
@@ -237,16 +239,6 @@ export const PlaygroundPage: React.FC = () => {
                     Le worker compile le Handlebars, injecte le pixel 1x1 GIF et expédie le message via SMTP.
                   </p>
                 </div>
-
-                <a
-                  href="http://localhost:8025"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full py-2 bg-[#FF6B00] hover:bg-[#E05E00] text-white text-xs font-semibold rounded-lg shadow-glow-solar flex items-center justify-center gap-2 transition-all"
-                >
-                  <span>Ouvrir dans Mailpit Web (8025)</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
               </div>
             ) : (
               <div className="py-12 text-center text-xs text-[#6B7280]">

@@ -337,15 +337,7 @@ export const EmailsLogs: React.FC = () => {
               <div className="bg-[#111827] rounded-xl border border-[#1F2937] overflow-hidden space-y-2">
                 <div className="p-3 bg-[#0B0F19] border-b border-[#1F2937] flex items-center justify-between text-xs">
                   <span className="font-semibold text-white">Rendu HTML</span>
-                  <a
-                    href="http://localhost:8025"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[#10B981] hover:underline flex items-center gap-1"
-                  >
-                    <span>Voir dans Mailpit</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  <span className="text-[10px] text-[#10B981] font-mono">Prévisualisation Sécurisée</span>
                 </div>
                 <div
                   className="p-4 text-white text-xs"

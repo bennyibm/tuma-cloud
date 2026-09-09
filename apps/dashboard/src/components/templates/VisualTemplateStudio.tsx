@@ -728,16 +728,8 @@ export const VisualTemplateStudio: React.FC<VisualTemplateStudioProps> = ({
         <div className="p-3 bg-[#10B981]/15 border border-[#10B981]/30 rounded-xl text-xs text-[#10B981] font-semibold flex items-center justify-between animate-in fade-in">
           <span className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
-            <span>Email de test délivré ! Consultez-le sur Mailpit (8025).</span>
+            <span>Email de test expédié avec succès via l'API TUMA !</span>
           </span>
-          <a
-            href="http://localhost:8025"
-            target="_blank"
-            rel="noreferrer"
-            className="underline flex items-center gap-1 text-white font-bold"
-          >
-            Ouvrir Mailpit (8025) <ExternalLink className="w-3 h-3" />
-          </a>
         </div>
       )}
 

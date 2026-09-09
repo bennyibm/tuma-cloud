@@ -8,7 +8,7 @@ interface ResetPasswordPageProps {
 
 export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onSwitchToLogin }) => {
   const { resetPassword } = useAuth();
-  const [email, setEmail] = useState('benny@tuma.dev');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -55,15 +55,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onSwitchTo
                 <strong className="text-white">{email}</strong>.
               </p>
               <div className="p-3 bg-[#0B0F19] rounded-xl border border-[#1F2937] text-xs text-[#9CA3AF]">
-                💡 Astuce Locale : Consultez votre boîte de test sur{' '}
-                <a
-                  href="http://localhost:8025"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[#10B981] underline font-semibold"
-                >
-                  Mailpit (8025)
-                </a>
+                Vérifiez votre boîte de réception ainsi que vos courriers indésirables (spam).
               </div>
 
               <button
@@ -87,7 +79,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onSwitchTo
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="dev@startup.cd"
+                    placeholder="nom@entreprise.cd"
                     className="w-full bg-[#0B0F19] text-xs text-white placeholder-[#6B7280] pl-9 pr-4 py-2.5 rounded-lg border border-[#1F2937] focus:outline-none focus:border-[#10B981] transition-colors"
                     required
                   />

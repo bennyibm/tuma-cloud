@@ -148,10 +148,10 @@ await tuma.sendContactForm({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-black text-white">
-              Bonjour, {user?.name || 'Benny Nkonga'} 👋
+              Bonjour, {user?.name || 'Développeur'} 👋
             </h2>
             <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30">
-              {organization?.name || 'Acme Kinshasa FinTech'}
+              {organization?.name || 'Mon Organisation'}
             </span>
           </div>
           <p className="text-xs text-[#9CA3AF] mt-1">

@@ -124,11 +124,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   <span>Statut Réseau (99.99%)</span>
                 </button>
               </li>
-              <li>
-                <a href="http://localhost:8025" target="_blank" rel="noreferrer" className="hover:text-white transition-colors flex items-center gap-1">
-                  Mailpit Inbox <ExternalLink className="w-3 h-3" />
-                </a>
-              </li>
             </ul>
           </div>
 

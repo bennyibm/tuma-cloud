@@ -5,7 +5,6 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Zap,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -19,8 +18,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onSwitchToReset,
 }) => {
   const { login } = useAuth();
-  const [email, setEmail] = useState('benny@tuma.dev');
-  const [password, setPassword] = useState('secret_password_123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -41,12 +40,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleFillCredentials = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setError(null);
   };
 
   return (
@@ -90,7 +83,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="benny@tuma.dev"
+                  placeholder="nom@entreprise.cd"
                   className="w-full bg-[#0B0F19] text-xs text-white placeholder-[#6B7280] pl-9 pr-4 py-2.5 rounded-lg border border-[#1F2937] focus:outline-none focus:border-[#10B981] transition-colors"
                   required
                 />
@@ -157,26 +150,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               )}
             </button>
           </form>
-
-          {/* Real Credentials Helper */}
-          <div className="p-3 bg-[#0B0F19] rounded-xl border border-[#1F2937] space-y-2">
-            <div className="flex items-center justify-between text-[11px] text-[#9CA3AF]">
-              <span className="font-semibold text-white flex items-center gap-1">
-                <Zap className="w-3 h-3 text-[#10B981]" /> Identifiants Production :
-              </span>
-              <button
-                type="button"
-                onClick={() => handleFillCredentials('benny@tuma.dev', 'secret_password_123')}
-                className="text-[#10B981] hover:underline font-bold"
-              >
-                Remplir 1-Clic
-              </button>
-            </div>
-            <div className="text-[10px] text-[#6B7280] font-mono flex justify-between">
-              <span>benny@tuma.dev</span>
-              <span>secret_password_123</span>
-            </div>
-          </div>
 
           <div className="pt-4 border-t border-[#1F2937] text-center">
             <p className="text-xs text-[#9CA3AF]">

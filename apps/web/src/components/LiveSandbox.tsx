@@ -170,16 +170,11 @@ export const LiveSandbox: React.FC = () => {
               <div className="pt-2 flex items-center justify-between text-[11px] text-[#9CA3AF]">
                 <span className="flex items-center gap-1.5 text-white font-semibold">
                   <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
-                  <span>Email acheminé vers le cluster SMTP Mailpit</span>
+                  <span>Email acheminé et signé DKIM avec succès</span>
                 </span>
-                <a
-                  href="http://localhost:8025"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[#10B981] hover:underline flex items-center gap-1 font-bold"
-                >
-                  Voir dans Mailpit (8025) <ExternalLink className="w-3 h-3" />
-                </a>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-[#10B981]/15 text-[#10B981] font-mono border border-[#10B981]/30">
+                  HTTP 202 Accepted
+                </span>
               </div>
             )}
           </div>

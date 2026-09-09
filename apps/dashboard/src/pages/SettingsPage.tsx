@@ -17,15 +17,15 @@ import { useAuth } from '../context/AuthContext';
 export const SettingsPage: React.FC = () => {
   const { user, organization } = useAuth();
   const [activeTab, setActiveTab] = useState<'general' | 'team' | 'alerts'>('general');
-  const [orgName, setOrgName] = useState(organization?.name || 'Acme Kinshasa FinTech');
+  const [orgName, setOrgName] = useState(organization?.name || 'Mon Organisation');
   const [timezone, setTimezone] = useState('Africa/Kinshasa (GMT+1)');
   const [saved, setSaved] = useState(false);
 
   const [teamMembers, setTeamMembers] = useState([
     {
       id: user?.id || 'usr_1',
-      name: user?.name || 'Benny Nkonga',
-      email: user?.email || 'benny@tuma.dev',
+      name: user?.name || 'Administrateur',
+      email: user?.email || 'admin@entreprise.cd',
       role: 'Owner / Administrateur',
       badge: 'bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30',
     },
@@ -37,7 +37,7 @@ export const SettingsPage: React.FC = () => {
 
   const [quota80, setQuota80] = useState(true);
   const [quota95, setQuota95] = useState(true);
-  const [alertEmail, setAlertEmail] = useState(user?.email || 'alerts@acme.cd');
+  const [alertEmail, setAlertEmail] = useState(user?.email || 'alertes@entreprise.cd');
 
   const handleSaveGeneral = (e: React.FormEvent) => {
     e.preventDefault();
