@@ -109,7 +109,40 @@ export class MailpitTransporter implements ITransporter {
       };
     }
 
-    // 3. Envoi classique via SMTP (LWS, Gmail, etc.)
+    // 3. Support natif LWS PHP Bridge HTTPS (Port 443)
+    const bridgeUrl = this.configService.get<string>('LWS_BRIDGE_URL');
+    if (bridgeUrl) {
+      this.logger.log(`[HTTP API] Envoi sécurisé via LWS PHP Bridge vers ${options.to.join(', ')}`);
+      const bridgeSecret = this.configService.get<string>('LWS_BRIDGE_SECRET', '');
+      const response = await fetch(bridgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(bridgeSecret ? { Authorization: `Bearer ${bridgeSecret.trim()}` } : {}),
+        },
+        body: JSON.stringify({
+          from: options.from,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text,
+          replyTo: options.replyTo,
+        }),
+      });
+
+      const data: any = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `Erreur LWS Bridge HTTP ${response.status}`);
+      }
+
+      return {
+        providerMessageId: data.messageId || `<lws-${Date.now()}@eldnet.tech>`,
+        provider: 'lws_bridge',
+        rawResponse: data,
+      };
+    }
+
+    // 4. Envoi classique via SMTP (LWS, Gmail, etc.)
     try {
       const result = await this.transporter.sendMail({
         from: options.from,
