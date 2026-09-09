@@ -221,7 +221,8 @@ export class AuthService {
       await user.save();
     }
 
-    // Expédition d'un vrai email via le transport local (visible dans Mailpit)
+    // Expédition d'un vrai email via le transport
+    const dashboardUrl = process.env.DASHBOARD_URL || 'https://console.tuma.eldnet.tech';
     try {
       await this.mailer.sendMail({
         from: '"Tuma Security" <security@tuma.dev>',
@@ -233,7 +234,7 @@ export class AuthService {
             <p>Bonjour,</p>
             <p>Une demande de réinitialisation de mot de passe a été émise pour votre compte (<strong>${normalizedEmail}</strong>).</p>
             <div style="margin: 24px 0;">
-              <a href="http://localhost:5173" style="background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+              <a href="${dashboardUrl}" style="background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
                 Réinitialiser mon mot de passe
               </a>
             </div>
@@ -366,5 +367,20 @@ export class AuthService {
   async deleteApiKey(organizationId: string, id: string) {
     await this.apiKeyModel.deleteOne({ _id: id, organizationId });
     return { deleted: true };
+  }
+
+  /**
+   * Nettoie le compte de test fumée smoke-test@tuma.dev
+   */
+  async deleteSmokeTestUser() {
+    const email = 'smoke-test@tuma.dev';
+    const user = await this.userModel.findOne({ email });
+    if (user) {
+      await this.orgModel.deleteOne({ _id: user.organizationId });
+      await this.userModel.deleteOne({ _id: user._id });
+      this.logger.log(`Smoke test user and org cleaned up: ${email}`);
+      return { success: true, message: 'Smoke test user and organization deleted successfully.' };
+    }
+    return { success: true, message: 'Smoke test user not found (already deleted).' };
   }
 }

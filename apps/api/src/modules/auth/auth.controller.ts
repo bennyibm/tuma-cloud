@@ -40,4 +40,10 @@ export class AuthController {
   async resetPassword(@Body() body: { email: string }) {
     return this.authService.requestPasswordReset(body.email);
   }
+
+  @Post('cleanup-smoke-test')
+  @HttpCode(HttpStatus.OK)
+  async cleanupSmokeTest() {
+    return this.authService.deleteSmokeTestUser();
+  }
 }
