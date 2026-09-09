@@ -1,4 +1,16 @@
-export const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/v1';
+const normalizeApiBase = (): string => {
+  let url = ((import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/v1').trim();
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = `https://${url}`;
+  }
+  url = url.replace(/\/+$/, '');
+  if (!url.endsWith('/v1')) {
+    url = `${url}/v1`;
+  }
+  return url;
+};
+
+export const API_BASE = normalizeApiBase();
 
 export const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem('tuma_auth_token');
