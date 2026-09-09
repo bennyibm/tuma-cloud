@@ -32,29 +32,54 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
       inject: [ConfigService],
     }),
 
-    // Connexion Redis / BullMQ (Supporte REDIS_URL, REDIS_HOST/PORT/PASSWORD et TLS pour Upstash)
+    // Connexion Redis / BullMQ (Supporte REDIS_URL, UPSTASH_REDIS_URL, REDIS_TOKEN, REDIS_PASSWORD, TLS)
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const redisUrl = configService.get<string>('REDIS_URL');
-        if (redisUrl) {
-          return { connection: { url: redisUrl } };
+        const rawUrl =
+          configService.get<string>('REDIS_URL') ||
+          configService.get<string>('UPSTASH_REDIS_URL') ||
+          configService.get<string>('UPSTASH_REDIS_REST_URL');
+
+        const token =
+          configService.get<string>('REDIS_PASSWORD') ||
+          configService.get<string>('REDIS_TOKEN') ||
+          configService.get<string>('UPSTASH_REDIS_REST_TOKEN');
+
+        let host = configService.get<string>('REDIS_HOST', 'localhost');
+        let port = Number(configService.get<number>('REDIS_PORT', 6379));
+        let password = token;
+        let isTls = configService.get<string>('REDIS_TLS') === 'true';
+
+        if (rawUrl) {
+          try {
+            const parsed = new URL(rawUrl);
+            host = parsed.hostname || host;
+            if (parsed.port) {
+              port = Number(parsed.port);
+            }
+            if (parsed.password) {
+              password = decodeURIComponent(parsed.password);
+            }
+            if (parsed.protocol === 'rediss:') {
+              isTls = true;
+            }
+          } catch {
+            // format brut non-URL ignoré
+          }
         }
 
-        const host = configService.get<string>('REDIS_HOST', 'localhost');
-        const port = Number(configService.get<number>('REDIS_PORT', 6379));
-        const password = configService.get<string>('REDIS_PASSWORD');
-        const isTls =
-          configService.get<string>('REDIS_TLS') === 'true' ||
-          host.includes('upstash.io') ||
-          host.includes('rediss://');
+        if (host.includes('upstash.io') || host.includes('rediss://')) {
+          isTls = true;
+        }
 
         return {
           connection: {
             host,
             port,
             ...(password ? { password } : {}),
-            ...(isTls ? { tls: {} } : {}),
+            ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
+            maxRetriesPerRequest: null,
           },
         };
       },
