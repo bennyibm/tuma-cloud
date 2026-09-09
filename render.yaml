@@ -22,9 +22,9 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: LWS_BRIDGE_URL
-        sync: false
+        value: https://bridges.eldnet.tech/tuma-bridge.php
       - key: LWS_BRIDGE_SECRET
-        sync: false
+        value: 53252ddafb841d3defe44023c025d56cd308a6dca1776d3f
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

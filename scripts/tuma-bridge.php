@@ -122,7 +122,14 @@ if (!$sent) {
         if ($smtpResult === true) {
             $sent = true;
         } else {
-            $errorDetail = "SMTP: " . $smtpResult;
+            // Tentative de secours automatique sur le port alternatif (465 <-> 587)
+            $altPort = ($smtpPort === 465) ? 587 : 465;
+            $altResult = tumaSendSmtp($smtpHost, $altPort, $smtpUser, $smtpPass, $senderEmail, $to, $fullMessage);
+            if ($altResult === true) {
+                $sent = true;
+            } else {
+                $errorDetail = "SMTP (port $smtpPort): " . $smtpResult . " | SMTP (port $altPort): " . $altResult;
+            }
         }
     } else {
         $lastErr = error_get_last();
