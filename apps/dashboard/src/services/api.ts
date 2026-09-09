@@ -1,4 +1,4 @@
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/v1';
+export const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/v1';
 
 export const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem('tuma_auth_token');

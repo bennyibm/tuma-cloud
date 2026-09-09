@@ -15,7 +15,7 @@ import {
   Terminal as TerminalIcon,
   Radio,
 } from 'lucide-react';
-import { api, MetricsRecord, EmailRecord } from '../services/api';
+import { api, MetricsRecord, EmailRecord, API_BASE } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { ISPRadarWidget } from '../components/ISPRadarWidget';
 import { LiveTerminalModal } from '../components/LiveTerminalModal';
@@ -114,7 +114,7 @@ const { data, error } = await tuma.emails.send({
     provider: 'M-Pesa (Vodacom)',
   },
 });`,
-    curl: `curl -X POST http://localhost:3001/v1/emails \\
+    curl: `curl -X POST ${API_BASE}/emails \\
   -H "Authorization: Bearer sk_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{

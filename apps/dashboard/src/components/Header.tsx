@@ -52,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Backend API Live Status */}
         <div className="hidden lg:flex items-center gap-2 bg-[#111827] px-3 py-1.5 rounded-lg border border-[#1F2937] text-xs">
           <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-          <span className="text-[#10B981] font-medium">API 3001 Live</span>
+          <span className="text-[#10B981] font-medium">API Live</span>
           <span className="text-[#6B7280]">|</span>
           <span className="text-[#9CA3AF]">2ms</span>
         </div>

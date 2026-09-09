@@ -11,7 +11,7 @@ import {
   MessageSquare,
   Smartphone,
 } from 'lucide-react';
-import { getAuthHeaders } from '../services/api';
+import { getAuthHeaders, API_BASE } from '../services/api';
 
 export const PlaygroundPage: React.FC = () => {
   const [from, setFrom] = useState('Tuma Notifications <notifications@tuma.dev>');
@@ -45,7 +45,7 @@ export const PlaygroundPage: React.FC = () => {
       const headers = getAuthHeaders();
       headers['Idempotency-Key'] = `idemp_play_${Date.now()}`;
 
-      const res = await fetch('http://localhost:3001/v1/emails', {
+      const res = await fetch(`${API_BASE}/emails`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -188,7 +188,7 @@ export const PlaygroundPage: React.FC = () => {
           </div>
 
           <div className="pt-2 flex items-center justify-between">
-            <span className="text-[11px] text-[#6B7280]">Endpoint : POST http://localhost:3001/v1/emails</span>
+            <span className="text-[11px] text-[#6B7280]">Endpoint : POST {API_BASE}/emails</span>
             <button
               type="submit"
               disabled={loading}

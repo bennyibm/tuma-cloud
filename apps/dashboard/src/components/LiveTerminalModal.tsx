@@ -184,7 +184,7 @@ export const LiveTerminalModal: React.FC<LiveTerminalModalProps> = ({ isOpen, on
               <TerminalIcon className="w-4 h-4 text-[#10B981]" />
               <span className="font-bold text-white">tuma-cluster-stream</span>
               <span className="text-[#10B981] text-[11px] bg-[#10B981]/15 px-2 py-0.5 rounded border border-[#10B981]/30">
-                LIVE SSE • 3001
+                LIVE SSE
               </span>
             </div>
           </div>

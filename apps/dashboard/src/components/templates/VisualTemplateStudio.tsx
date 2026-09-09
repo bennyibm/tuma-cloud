@@ -39,7 +39,7 @@ import {
   Zap,
   ShieldCheck,
 } from 'lucide-react';
-import { api } from '../../services/api';
+import { api, API_BASE } from '../../services/api';
 
 export interface TemplateBlock {
   id: string;
@@ -584,7 +584,7 @@ export const VisualTemplateStudio: React.FC<VisualTemplateStudioProps> = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await fetch('http://localhost:3001/v1/templates', {
+      await fetch(`${API_BASE}/templates`, {
         method: 'POST',
         headers: {
           Authorization: 'Bearer sk_live_test123456789',
