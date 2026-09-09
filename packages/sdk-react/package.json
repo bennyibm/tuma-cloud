@@ -1,0 +1,48 @@
+{
+  "name": "@tuma/react",
+  "version": "1.0.0",
+  "description": "Official React & Next.js SDK for TUMA Cloud (Contact forms, hooks, provider & server actions)",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "require": "./dist/server.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "tuma",
+    "email",
+    "react",
+    "nextjs",
+    "contact-form",
+    "forms",
+    "transactional-email",
+    "africa"
+  ],
+  "author": "TUMA Team",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.8.2"
+  }
+}

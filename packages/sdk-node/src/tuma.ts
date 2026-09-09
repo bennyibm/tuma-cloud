@@ -10,7 +10,7 @@ export class Tuma {
 
   constructor(options: string | TumaOptions) {
     const apiKey = typeof options === 'string' ? options : options.apiKey;
-    const baseUrl = typeof options === 'object' && options.baseUrl ? options.baseUrl : 'http://localhost:3001';
+    const baseUrl = typeof options === 'object' && options.baseUrl ? options.baseUrl : 'https://api.tuma.eldnet.tech';
 
     if (!apiKey) {
       throw new Error("Missing API Key. Provide a valid 'sk_live_...' secret key.");

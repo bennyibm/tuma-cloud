@@ -11,7 +11,7 @@ export interface ClientSendResponse {
 
 class TumaBrowserClient {
   private publicKey: string = '';
-  private baseUrl: string = 'http://localhost:3001';
+  private baseUrl: string = 'https://api.tuma.eldnet.tech';
 
   /**
    * Initialise le client Browser avec la clé publique du projet
