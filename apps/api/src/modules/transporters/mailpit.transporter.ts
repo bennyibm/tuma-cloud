@@ -109,36 +109,74 @@ export class MailpitTransporter implements ITransporter {
       };
     }
 
-    // 3. Support natif LWS PHP Bridge HTTPS (Port 443)
+    // 3. Support natif LWS PHP Bridge (Port 80 / 443)
     const bridgeUrl = this.configService.get<string>('LWS_BRIDGE_URL');
     if (bridgeUrl) {
       this.logger.log(`[HTTP API] Envoi sécurisé via LWS PHP Bridge vers ${options.to.join(', ')}`);
       const bridgeSecret = this.configService.get<string>('LWS_BRIDGE_SECRET', '');
-      const response = await fetch(bridgeUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(bridgeSecret
-            ? {
-                Authorization: `Bearer ${bridgeSecret.trim()}`,
-                'X-Tuma-Secret': bridgeSecret.trim(),
-              }
-            : {}),
-        },
-        body: JSON.stringify({
-          from: options.from,
-          to: options.to,
-          subject: options.subject,
-          html: options.html,
-          text: options.text,
-          replyTo: options.replyTo,
-        }),
+      const payload = JSON.stringify({
+        from: options.from,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        replyTo: options.replyTo,
+        smtpPass: this.configService.get<string>('SMTP_PASS'),
+        smtpUser: this.configService.get<string>('SMTP_USER'),
+        smtpHost: this.configService.get<string>('SMTP_HOST', 'mail.eldnet.tech'),
+        smtpPort: this.configService.get<number>('SMTP_PORT', 587),
       });
 
-      const data: any = await response.json().catch(() => ({}));
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || `Erreur LWS Bridge HTTP ${response.status}`);
-      }
+      const data = await new Promise<any>((resolve, reject) => {
+        const parsedUrl = new URL(bridgeUrl);
+        const isHttps = parsedUrl.protocol === 'https:';
+        const client = isHttps ? require('https') : require('http');
+
+        const req = client.request(
+          parsedUrl,
+          {
+            method: 'POST',
+            rejectUnauthorized: false,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json, text/plain, */*',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Content-Length': Buffer.byteLength(payload),
+              ...(bridgeSecret
+                ? {
+                    Authorization: `Bearer ${bridgeSecret.trim()}`,
+                    'X-Tuma-Secret': bridgeSecret.trim(),
+                  }
+                : {}),
+            },
+            timeout: 15000,
+          },
+          (res: any) => {
+            let body = '';
+            res.on('data', (chunk: any) => (body += chunk));
+            res.on('end', () => {
+              try {
+                const parsed = JSON.parse(body);
+                if (res.statusCode >= 200 && res.statusCode < 300 && parsed.success) {
+                  resolve(parsed);
+                } else {
+                  reject(new Error(parsed.error || `Erreur LWS Bridge HTTP ${res.statusCode}: ${body.slice(0, 100)}`));
+                }
+              } catch {
+                reject(new Error(`Réponse non-JSON du Bridge LWS (HTTP ${res.statusCode}): ${body.slice(0, 100)}`));
+              }
+            });
+          },
+        );
+
+        req.on('error', (err: any) => reject(err));
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('Timeout de connexion vers LWS Bridge (15s)'));
+        });
+        req.write(payload);
+        req.end();
+      });
 
       return {
         providerMessageId: data.messageId || `<lws-${Date.now()}@eldnet.tech>`,

@@ -94,9 +94,41 @@ if (!empty($htmlContent)) {
 
 $body .= "--" . $boundary . "--";
 
-// 6. Expédition native via le serveur de messagerie local LWS
+// 6. Expédition : essai via mail() puis secours via SMTP direct LWS
 $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
-$sent = @mail($to, $encodedSubject, $body, $headers, "-f " . escapeshellarg($senderEmail));
+$fullHeaders = $headers . "Subject: " . $encodedSubject . "\r\nTo: " . $to . "\r\n";
+$fullMessage = $fullHeaders . "\r\n" . $body;
+
+$sent = false;
+$errorDetail = '';
+
+// Tentative 1 : mail() sans -f
+$sent = @mail($to, $encodedSubject, $body, $headers);
+
+// Tentative 2 : mail() avec -f
+if (!$sent) {
+    $sent = @mail($to, $encodedSubject, $body, $headers, "-f " . escapeshellarg($senderEmail));
+}
+
+// Tentative 3 : SMTP direct via Socket si un mot de passe est transmis ou configuré
+if (!$sent) {
+    $smtpPass = $data['smtpPass'] ?? ($data['smtp_pass'] ?? '');
+    $smtpUser = $data['smtpUser'] ?? ($data['smtp_user'] ?? $senderEmail);
+    $smtpHost = $data['smtpHost'] ?? 'mail.eldnet.tech';
+    $smtpPort = intval($data['smtpPort'] ?? 587);
+
+    if (!empty($smtpPass)) {
+        $smtpResult = tumaSendSmtp($smtpHost, $smtpPort, $smtpUser, $smtpPass, $senderEmail, $to, $fullMessage);
+        if ($smtpResult === true) {
+            $sent = true;
+        } else {
+            $errorDetail = "SMTP: " . $smtpResult;
+        }
+    } else {
+        $lastErr = error_get_last();
+        $errorDetail = "mail() a échoué (" . ($lastErr['message'] ?? 'fonction désactivée ou restriction LWS') . "). Vous pouvez renseigner 'smtpPass' dans le JSON pour utiliser le relais SMTP direct.";
+    }
+}
 
 if ($sent) {
     echo json_encode([
@@ -109,6 +141,82 @@ if ($sent) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => 'Échec de la fonction mail() native sur LWS. Vérifiez les quotas de votre hébergement.',
+        'error' => $errorDetail,
     ]);
+}
+
+/**
+ * Envoi direct via socket SMTP (STARTTLS port 587 ou SSL port 465)
+ */
+function tumaSendSmtp($host, $port, $user, $pass, $from, $to, $rawEmail) {
+    $timeout = 10;
+    $context = stream_context_create([
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+        ]
+    ]);
+    $prefix = ($port == 465) ? 'ssl://' : 'tcp://';
+    $socket = @stream_socket_client($prefix . $host . ':' . $port, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
+    if (!$socket) {
+        return "Connexion socket échouée: $errstr ($errno)";
+    }
+
+    $read = function() use ($socket) {
+        $res = '';
+        while ($line = fgets($socket, 512)) {
+            $res .= $line;
+            if (isset($line[3]) && $line[3] === ' ') break;
+        }
+        return $res;
+    };
+
+    $send = function($cmd) use ($socket, $read) {
+        fputs($socket, $cmd . "\r\n");
+        return $read();
+    };
+
+    $read(); // Bannière d'accueil
+    $send("EHLO localhost");
+
+    if ($port == 587) {
+        $tlsRes = $send("STARTTLS");
+        if (substr($tlsRes, 0, 3) !== '220') {
+            fclose($socket);
+            return "STARTTLS refusé: " . trim($tlsRes);
+        }
+        if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+            fclose($socket);
+            return "Échec de la négociation TLS";
+        }
+        $send("EHLO localhost");
+    }
+
+    if (!empty($user) && !empty($pass)) {
+        $send("AUTH LOGIN");
+        $send(base64_encode($user));
+        $authRes = $send(base64_encode($pass));
+        if (substr($authRes, 0, 3) !== '235') {
+            fclose($socket);
+            return "Authentification refusée: " . trim($authRes);
+        }
+    }
+
+    $send("MAIL FROM: <" . $from . ">");
+    $rcptRes = $send("RCPT TO: <" . $to . ">");
+    if (substr($rcptRes, 0, 3) !== '250') {
+        fclose($socket);
+        return "Destinataire rejeté: " . trim($rcptRes);
+    }
+
+    $send("DATA");
+    fputs($socket, $rawEmail . "\r\n.\r\n");
+    $dataRes = $read();
+    $send("QUIT");
+    fclose($socket);
+
+    if (substr($dataRes, 0, 3) === '250') {
+        return true;
+    }
+    return "Envoi des données rejeté: " . trim($dataRes);
 }
