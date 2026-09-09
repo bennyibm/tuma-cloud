@@ -28,11 +28,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// 3. Contrôle d'authentification par Token Bearer
-$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches) || trim($matches[1]) !== TUMA_SECRET) {
+// 3. Contrôle d'authentification par Token (Supporte Authorization Bearer et X-Tuma-Secret pour Apache/LWS)
+$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+if (!$authHeader && function_exists('apache_request_headers')) {
+    $reqHeaders = apache_request_headers();
+    $authHeader = $reqHeaders['Authorization'] ?? $reqHeaders['authorization'] ?? '';
+}
+
+$token = '';
+if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+    $token = trim($matches[1]);
+} elseif (!empty($_SERVER['HTTP_X_TUMA_SECRET'])) {
+    $token = trim($_SERVER['HTTP_X_TUMA_SECRET']);
+}
+
+if ($token !== TUMA_SECRET) {
     http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Unauthorized. Invalid Bearer Token.']);
+    echo json_encode(['success' => false, 'error' => 'Unauthorized. Invalid Secret Token.']);
     exit;
 }
 

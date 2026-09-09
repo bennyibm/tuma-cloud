@@ -118,7 +118,12 @@ export class MailpitTransporter implements ITransporter {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(bridgeSecret ? { Authorization: `Bearer ${bridgeSecret.trim()}` } : {}),
+          ...(bridgeSecret
+            ? {
+                Authorization: `Bearer ${bridgeSecret.trim()}`,
+                'X-Tuma-Secret': bridgeSecret.trim(),
+              }
+            : {}),
         },
         body: JSON.stringify({
           from: options.from,
