@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  OnApplicationBootstrap,
   UnprocessableEntityException,
   UnauthorizedException,
   BadRequestException,
@@ -18,10 +19,10 @@ import { SuppressionsService } from '../suppressions/suppressions.service';
 import { AuthService } from '../auth/auth.service';
 import { SendEmailDto } from './dto/send-email.dto';
 import { ClientSendDto } from './dto/client-send.dto';
-import { EmailJobData } from '../queues/email-send.processor';
+import { EmailJobData, EmailSendProcessor } from '../queues/email-send.processor';
 
 @Injectable()
-export class EmailsService {
+export class EmailsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(EmailsService.name);
 
   constructor(
@@ -31,7 +32,37 @@ export class EmailsService {
     @InjectQueue('email-send-queue') private readonly emailQueue: Queue<EmailJobData>,
     private readonly suppressionsService: SuppressionsService,
     private readonly authService: AuthService,
+    private readonly emailSendProcessor: EmailSendProcessor,
   ) {}
+
+  async onApplicationBootstrap() {
+    // Récupération des emails orphelins restés en état "queued" (ex: redémarrage serveur ou failover)
+    setTimeout(async () => {
+      try {
+        const pendingEmails = await this.emailModel.find({ status: 'queued' }).limit(50);
+        if (pendingEmails.length > 0) {
+          this.logger.log(`[Startup Recovery] ${pendingEmails.length} email(s) en attente détecté(s). Lancement du traitement direct...`);
+          for (const email of pendingEmails) {
+            await this.emailSendProcessor.processDirect({
+              emailId: email._id.toString(),
+              organizationId: email.organizationId.toString(),
+              from: email.from,
+              to: email.to,
+              cc: email.cc,
+              bcc: email.bcc,
+              replyTo: email.replyTo,
+              subject: email.subject,
+              html: email.html,
+              text: email.text,
+              variables: email.variables,
+            });
+          }
+        }
+      } catch (err: any) {
+        this.logger.error(`Erreur recovery emails queued: ${err.message}`);
+      }
+    }, 2000);
+  }
 
   /**
    * Ingestion ultra-rapide (< 30ms) avec contrôle anti-doublon et liste de suppression
@@ -86,32 +117,47 @@ export class EmailsService {
       fallback: dto.fallback || null,
     });
 
-    // 4. Enqueue dans BullMQ / Redis
-    await this.emailQueue.add(
-      'send-email-job',
-      {
-        emailId: newEmail._id.toString(),
-        organizationId,
-        from: dto.from,
-        to: dto.to,
-        cc: dto.cc,
-        bcc: dto.bcc,
-        replyTo: dto.reply_to,
-        subject: dto.subject,
-        html: dto.html,
-        text: dto.text,
-        variables: dto.variables,
-        attachments: dto.attachments,
-      },
-      {
+    // 4. Enqueue dans BullMQ / Redis avec auto-dispatcher de secours
+    const jobData: EmailJobData = {
+      emailId: newEmail._id.toString(),
+      organizationId,
+      from: dto.from,
+      to: dto.to,
+      cc: dto.cc,
+      bcc: dto.bcc,
+      replyTo: dto.reply_to,
+      subject: dto.subject,
+      html: dto.html,
+      text: dto.text,
+      variables: dto.variables,
+      attachments: dto.attachments,
+    };
+
+    try {
+      await this.emailQueue.add('send-email-job', jobData, {
         attempts: 3,
         backoff: {
           type: 'exponential',
           delay: 5000,
         },
         removeOnComplete: true,
-      },
-    );
+      });
+    } catch (err: any) {
+      this.logger.warn(`BullMQ indisponible (${err.message}). Lancement du traitement direct.`);
+    }
+
+    // Déclencheur automatique de secours (au cas où Redis est déconnecté ou le worker en pause)
+    setTimeout(async () => {
+      try {
+        const check = await this.emailModel.findById(newEmail._id);
+        if (check && check.status === 'queued') {
+          this.logger.log(`[Auto-Dispatcher] Traitement direct de secours pour l'email ${newEmail._id}`);
+          await this.emailSendProcessor.processDirect(jobData);
+        }
+      } catch (err: any) {
+        this.logger.error(`Erreur auto-dispatcher email ${newEmail._id}: ${err.message}`);
+      }
+    }, 500);
 
     return {
       id: newEmail._id.toString(),
@@ -217,24 +263,39 @@ export class EmailsService {
       tags: [{ name: 'source', value: 'client_frontend_form' }, { name: 'template', value: templateDoc.slug }],
     });
 
-    await this.emailQueue.add(
-      'send-email-job',
-      {
-        emailId: newEmail._id.toString(),
-        organizationId: authData.organizationId,
-        from: senderFrom,
-        to: recipientTo,
-        subject: templateDoc.subject,
-        html: templateDoc.html,
-        text: templateDoc.text,
-        variables: dto.variables,
-      },
-      {
+    const jobData: EmailJobData = {
+      emailId: newEmail._id.toString(),
+      organizationId: authData.organizationId,
+      from: senderFrom,
+      to: recipientTo,
+      subject: templateDoc.subject,
+      html: templateDoc.html,
+      text: templateDoc.text,
+      variables: dto.variables,
+    };
+
+    try {
+      await this.emailQueue.add('send-email-job', jobData, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
         removeOnComplete: true,
-      },
-    );
+      });
+    } catch (err: any) {
+      this.logger.warn(`BullMQ indisponible (${err.message}). Lancement du traitement direct.`);
+    }
+
+    // Déclencheur automatique de secours pour le frontend
+    setTimeout(async () => {
+      try {
+        const check = await this.emailModel.findById(newEmail._id);
+        if (check && check.status === 'queued') {
+          this.logger.log(`[Auto-Dispatcher] Traitement direct de secours pour l'email client ${newEmail._id}`);
+          await this.emailSendProcessor.processDirect(jobData);
+        }
+      } catch (err: any) {
+        this.logger.error(`Erreur auto-dispatcher email client ${newEmail._id}: ${err.message}`);
+      }
+    }, 500);
 
     this.logger.log(`[Frontend Send] Email client expédié via template '${templateDoc.slug}' (ID: ${newEmail._id})`);
     return {

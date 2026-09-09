@@ -17,7 +17,7 @@ export interface SendMailOptions {
 
 export interface SendMailResult {
   providerMessageId: string;
-  provider: 'mailpit' | 'aws_ses' | 'smtp_relay';
+  provider: 'mailpit' | 'aws_ses' | 'smtp_relay' | 'tuma-edge-simulator' | string;
   rawResponse?: any;
 }
 

@@ -22,6 +22,6 @@ import { TrackingModule } from '../tracking/tracking.module';
     TrackingModule,
   ],
   providers: [EmailSendProcessor],
-  exports: [BullModule],
+  exports: [BullModule, EmailSendProcessor],
 })
 export class QueuesModule {}

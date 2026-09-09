@@ -41,8 +41,22 @@ export class EmailSendProcessor extends WorkerHost {
   }
 
   async process(job: Job<EmailJobData>): Promise<any> {
-    const { emailId, organizationId, from, to, cc, bcc, replyTo, subject, html, text, variables, attachments } = job.data;
-    this.logger.log(`[Job ${job.id}] Traitement de l'envoi pour l'email ${emailId} vers ${to.join(', ')}`);
+    return this.handleEmailSend(job.data, String(job.id));
+  }
+
+  /**
+   * Traitement direct sans passer par BullMQ (utile en failover ou en environnement serverless)
+   */
+  async processDirect(data: EmailJobData): Promise<any> {
+    return this.handleEmailSend(data, `direct-${Date.now()}`);
+  }
+
+  /**
+   * Cœur de traitement de l'envoi d'email
+   */
+  async handleEmailSend(data: EmailJobData, jobId: string = 'internal'): Promise<any> {
+    const { emailId, organizationId, from, to, cc, bcc, replyTo, subject, html, text, variables, attachments } = data;
+    this.logger.log(`[Job ${jobId}] Traitement de l'envoi pour l'email ${emailId} vers ${to.join(', ')}`);
 
     try {
       // 1. Mise à jour de l'état en "sending"
@@ -101,10 +115,10 @@ export class EmailSendProcessor extends WorkerHost {
         status: 'sent',
       });
 
-      this.logger.log(`[Job ${job.id}] Email ${emailId} envoyé avec succès (ID: ${sendResult.providerMessageId})`);
+      this.logger.log(`[Job ${jobId}] Email ${emailId} envoyé avec succès (ID: ${sendResult.providerMessageId})`);
       return sendResult;
     } catch (error: any) {
-      this.logger.error(`[Job ${job.id}] Échec de l'envoi pour l'email ${emailId}: ${error.message}`, error.stack);
+      this.logger.error(`[Job ${jobId}] Échec de l'envoi pour l'email ${emailId}: ${error.message}`, error.stack);
       await this.emailModel.findByIdAndUpdate(emailId, {
         status: 'failed',
         errorMessage: error.message,
