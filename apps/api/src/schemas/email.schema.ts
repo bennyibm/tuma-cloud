@@ -40,7 +40,7 @@ export class Email extends Document {
 
   @Prop({
     required: true,
-    enum: ['queued', 'sending', 'sent', 'delivered', 'bounced', 'complained', 'failed'],
+    enum: ['queued', 'sending', 'sent', 'delivered', 'opened', 'clicked', 'bounced', 'complained', 'failed'],
     default: 'queued',
     index: true,
   })

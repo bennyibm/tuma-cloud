@@ -108,8 +108,8 @@ export class TrackingService {
       },
     );
 
-    // 2. Injection du pixel transparent 1x1 sans display:none pour éviter le blocage par les webmails (Gmail, Apple Mail, Outlook)
-    const pixelTag = `<img src="${this.baseUrl}/open/${token}" width="1" height="1" border="0" alt="" style="height:1px !important; width:1px !important; border-width:0 !important; margin:0 !important; padding:0 !important; opacity:0 !important;" />`;
+    // 2. Injection du pixel transparent 1x1 conforme aux webmails (sans opacity:0 pour éviter les bloqueurs)
+    const pixelTag = `<img src="${this.baseUrl}/open/${token}" width="1" height="1" border="0" alt="" style="height:1px !important; width:1px !important; border-width:0 !important; margin:0 !important; padding:0 !important; display:block !important;" />`;
 
     this.logger.log(`[Tracking] Pixel injecté pour l'email ${emailId} via ${this.baseUrl}/open/${token.slice(0, 16)}...`);
 
@@ -131,11 +131,13 @@ export class TrackingService {
         // Incrémentation sécurisée du compteur d'ouvertures
         const currentOpens = email.tracking?.opens ?? 0;
         const isFirstOpen = currentOpens === 0;
+        const nextStatus =
+          email.status === 'sent' || email.status === 'delivered' ? 'opened' : email.status;
 
         await this.emailModel.findByIdAndUpdate(data.emailId, {
           $inc: { 'tracking.opens': 1 },
           ...(isFirstOpen ? { 'tracking.firstOpenedAt': new Date() } : {}),
-          status: email.status === 'sent' ? 'delivered' : email.status,
+          status: nextStatus,
         });
 
         // Enregistrement de l'événement dans la timeline
@@ -181,11 +183,16 @@ export class TrackingService {
       if (email) {
         const currentClicks = email.tracking?.clicks ?? 0;
 
+        const nextStatus =
+          email.status === 'sent' || email.status === 'delivered' || email.status === 'opened'
+            ? 'clicked'
+            : email.status;
+
         // Incrémentation du compteur de clics
         await this.emailModel.findByIdAndUpdate(data.emailId, {
           $inc: { 'tracking.clicks': 1 },
           'tracking.lastClickedAt': new Date(),
-          status: email.status === 'sent' ? 'delivered' : email.status,
+          status: nextStatus,
         });
 
         // Enregistrement de l'événement dans la timeline
