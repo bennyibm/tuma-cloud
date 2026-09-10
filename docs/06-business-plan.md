@@ -102,7 +102,7 @@ flowchart TD
 | Caractéristiques | **Gratuit (Développeur)** | **Starter** | **Pro** | **Scale / Entreprise** |
 | :--- | :---: | :---: | :---: | :---: |
 | **Tarification Mensuelle** | **0 $ / mois** | **15 $ / mois** *(~42 000 CDF)* | **49 $ / mois** *(~137 000 CDF)* | **199 $ / mois** *(~550 000 CDF)* |
-| **Quota d'Emails Inclus** | 3 000 / mois *(100/jour)* | 50 000 / mois | 200 000 / mois | 1 000 000 / mois |
+| **Quota d'Emails Inclus** | 1 000 / mois offerts | 50 000 / mois | 200 000 / mois | 1 000 000 / mois |
 | **Coût au-delà du Forfait** | Bloqué (Recharge requise) | 0,0005 $ / email *(0,50$ / 1k)* | 0,0004 $ / email *(0,40$ / 1k)* | 0,0003 $ / email *(0,30$ / 1k)* |
 | **Domaines Authentifiés** | 1 domaine | 3 domaines | Domaines illimités | Domaines illimités |
 | **Rétention des Logs & Timeline** | 3 jours | 7 jours | 30 jours | 90 jours + Export S3/GCS |
@@ -174,11 +174,12 @@ flowchart LR
 ```
 
 ### 5.1. Le Levier Viral du "Product-Led Growth" (PLG)
-- **Le Watermark Gratuit** : Tous les emails envoyés via le forfait gratuit comportent en pied de page un micro-badge cliquable : *⚡ Propulsé par notre plateforme*. Chaque email envoyé devient un vecteur d'acquisition gratuit touchant d'autres développeurs et entrepreneurs.
+- **Le Watermark Gratuit** : Tous les emails envoyés via le forfait gratuit comportent en pied de page un micro-badge cliquable : *⚡ Propulsé par TUMA Cloud*. Chaque email envoyé devient un vecteur d'acquisition gratuit touchant d'autres développeurs et entrepreneurs.
 - **Bibliothèques & Connecteurs Open-Source** :
-  - `npm install @monplateforme/sdk` (Node / TypeScript)
-  - `composer require monplateforme/laravel-mailer` (PHP / Laravel)
-  - `pip install monplateforme-python` (Python / Django / FastAPI)
+  - `npm install @tuma/sdk` (Node / TypeScript)
+  - `npm install @tuma/browser` (Client Web / Navigateur)
+  - `composer require tuma/laravel-mailer` (PHP / Laravel)
+  - `pip install tuma-python` (Python / Django / FastAPI)
   - Plugin WordPress officiel : Remplacement du `wp_mail()` standard en 1 clic.
 
 ### 5.2. Partenariats Stratégiques Écosystème

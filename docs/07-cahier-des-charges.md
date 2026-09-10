@@ -155,14 +155,14 @@ Pour que les emails n'atterrissent jamais dans les dossiers spam de Gmail, Micro
      ```text
      Nom d'hôte : bounces.mail.mondomaine.com
      Type       : CNAME
-     Valeur     : feedback.monplateforme.com
+     Valeur     : feedback.tuma.dev
      ```
 3. **Politique DMARC (RFC 7489)** :
    - Configuration de la politique d'alignement du domaine :
      ```text
      Nom d'hôte : _dmarc.mail.mondomaine.com
      Type       : TXT
-     Valeur     : v=DMARC1; p=none; rua=mailto:dmarc-reports@monplateforme.com
+     Valeur     : v=DMARC1; p=none; rua=mailto:dmarc-reports@tuma.dev
      ```
 4. **Vérificateur DNS Asynchrone (*DNS Poller Worker*)** :
    - Un processus d'arrière-plan interroge récursivement les serveurs DNS de référence via la bibliothèque native `dns.promises.resolveTxt` et `resolveCname`.
@@ -273,7 +273,7 @@ Ce module enregistre en direct l'engagement des destinataires (ouvertures d'emai
 
 #### Mécanismes d'Ingénierie Détaillés
 1. **Pixel d'Ouverture Transparent ($1\times 1$ GIF Binaire)** :
-   - Injection de la balise `<img src="https://track.monplateforme.com/v1/track/open/:token" width="1" height="1" style="display:none !important;" />`.
+   - Injection de la balise `<img src="https://api.tuma.eldnet.tech/v1/tracking/open/:token" width="1" height="1" style="display:none !important;" />`.
    - Le token est un jeton signé HMAC contenant `{ emailId, organizationId }`.
    - Le serveur répond en moins de **5 ms** avec le flux d'octets binaire exact du standard GIF89a (43 octets) :
      ```text
@@ -287,7 +287,7 @@ Ce module enregistre en direct l'engagement des destinataires (ouvertures d'emai
      ```
 2. **Proxy de Redirection Sécurisé des Clics** :
    - Tous les liens `<a href="https://acme.com/promo">` sont réécrits en :
-     `https://track.monplateforme.com/v1/track/click/:signedToken?url=https%3A%2F%2Facme.com%2Fpromo`.
+     `https://api.tuma.eldnet.tech/v1/tracking/click/:signedToken?url=https%3A%2F%2Facme.com%2Fpromo`.
    - Lors du clic, le serveur valide la signature cryptographique du token, consigne l'événement `email.clicked` dans Redis et émet immédiatement une redirection **HTTP 302 Found** vers l'URL d'origine.
 3. **Algorithme Heuristique de Détection des Scanners Antivirus** :
    - *Règle 1 (Seuil Temporel)* : Tout clic ou ouverture survenant moins de **150 millisecondes** après l'envoi SMTP est étiqueté comme `bot_scanner` et exclu des compteurs de conversion officiels.
@@ -301,11 +301,11 @@ Ce module enregistre en direct l'engagement des destinataires (ouvertures d'emai
 Dès qu'un événement survient (`email.delivered`, `email.opened`, `email.clicked`, `email.bounced`, `email.complained`), ce module expédie une requête HTTP POST sécurisée vers les serveurs des clients.
 
 #### Mécanismes d'Ingénierie Détaillés
-1. **Signature Cryptographique HMAC SHA256 (`Resend-Signature`)** :
+1. **Signature Cryptographique HMAC SHA256 (`Tuma-Signature`)** :
    - Pour empêcher l'usurpation d'événements par des attaquants tiers, chaque requête webhook est signée avec le secret partagé du webhook client (`whsec_...`).
    - Construction de la charge signée : `signedPayload = timestamp + "." + jsonRawBody`.
    - Calcul : `signature = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex')`.
-   - En-tête HTTP transmis : `Resend-Signature: t=1724750400,v1=9a8b7c6d5e4f3a2b1c0d...`.
+   - En-tête HTTP transmis : `Tuma-Signature: t=1724750400,v1=9a8b7c6d5e4f3a2b1c0d...`.
 2. **Protection Anti-Rejeu (*Replay Attack Prevention*)** :
    - Les clients comparent le timestamp `t` à l'heure courante : si $|t_{\text{actuel}} - t| > 300\text{ secondes}$ (5 minutes), la requête doit être rejetée.
 3. **Plan de Re-tentatives Échelonné (*5-Step Retry Schedule*)** :
@@ -325,7 +325,7 @@ Dès qu'un événement survient (`email.delivered`, `email.opened`, `email.click
 #### Requête HTTP Complète
 ```http
 POST /v1/emails HTTP/1.1
-Host: api.monplateforme.com
+Host: api.tuma.eldnet.tech
 Authorization: Bearer sk_live_EXAMPLE_KEY_FOR_DOCUMENTATION_ONLY
 Idempotency-Key: 7b9f8e21-0a4b-4f92-9e8a-81a123bc45de
 Content-Type: application/json
@@ -371,7 +371,7 @@ Content-Type: application/json
 #### Réponse HTTP 422 Unprocessable Entity (Erreur RFC 7807)
 ```json
 {
-  "type": "https://api.monplateforme.com/errors/suppressed-recipient",
+  "type": "https://api.tuma.eldnet.tech/errors/suppressed-recipient",
   "title": "Recipient Suppressed",
   "status": 422,
   "detail": "The recipient 'invalid@example.com' is on the suppression list due to a previous hard bounce.",
@@ -381,11 +381,11 @@ Content-Type: application/json
 
 ---
 
-### 4.2. Ingestion Frontend Sans Serveur : `POST /v1/client/send`
+### 4.2. Ingestion Frontend Sans Serveur : `POST /v1/emails/client-send`
 
 ```http
-POST /v1/client/send HTTP/1.1
-Host: api.monplateforme.com
+POST /v1/emails/client-send HTTP/1.1
+Host: api.tuma.eldnet.tech
 Origin: https://monclient.com
 Content-Type: application/json
 

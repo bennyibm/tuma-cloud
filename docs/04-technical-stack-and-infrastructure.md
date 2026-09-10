@@ -1,270 +1,209 @@
-# 🛠️ 04. Stack Technique, Architecture des Composants & Environnement
+# 🛠️ 04. Stack Technique, Architecture des Composants & Infrastructure de Production
 
-Ce document présente l'architecture fonctionnelle de la plateforme, l'architecture interne des composants logiciels (modules NestJS, workers, SDKs, dashboard), les choix technologiques et la configuration de l'infrastructure locale Docker.
+Ce document présente l'architecture fonctionnelle de **TUMA Cloud**, l'architecture interne des composants logiciels (modules NestJS, workers BullMQ, SDKs, console React), les choix technologiques et la topologie de déploiement en production (Render, Vercel, MongoDB Atlas, LWS Bridge).
 
 ---
 
-## 1. Architecture Fonctionnelle
+## 1. Topologie d'Infrastructure de Production
 
-L'architecture fonctionnelle organise la plateforme en **8 blocs fonctionnels interconnectés**, garantissant la sécurité des accès, la délivrabilité DNS, la résilience de l'envoi et la télémétrie en temps réel.
-
-> 🎨 **Fichier source Draw.io** : [`docs/diagrams/05-architecture-fonctionnelle.drawio`](./diagrams/05-architecture-fonctionnelle.drawio) *(Ouvrable directement dans [app.diagrams.net](https://app.diagrams.net) ou via l'extension VS Code Draw.io)*
+TUMA Cloud est déployé sur une architecture cloud hybride à haute disponibilité combinant puissance de calcul, résilience de transport et délivrabilité 100% Inbox :
 
 ```mermaid
 flowchart TD
-    subgraph S1 ["1. Sécurité & Accès"]
-        A_KEYS["🔑 Gestion Clés API (sk_ / pk_)"]
-        A_CORS["🛡️ Contrôle d'Origine CORS"]
-        A_RATE["⏱️ Rate Limiting (Token Bucket)"]
-        A_CAPTCHA["🤖 Anti-Abus & Captcha"]
+    subgraph CLIENTS ["1. Couche Clients"]
+        WEB_APP["🌐 Utilisateurs & Développeurs<br/>(Navigateur Web)"]
+        NODE_CLI["📦 Applications Backend Développeurs<br/>(@tuma/sdk / Node.js / Python / cURL)"]
+        FRONT_CLI["💻 Sites Web & Formulaires Clients<br/>(@tuma/browser / HTML / React)"]
     end
 
-    subgraph S2 ["2. Domaines & DNS"]
-        D_DKIM["🔐 Générateur DKIM (RSA 2048)"]
-        D_SPF["📨 Return-Path & SPF CNAME"]
-        D_POLL["🔍 Vérificateur DNS Automatique"]
-        D_DMARC["📜 Validation Politique DMARC"]
+    subgraph CLOUD_FRONT ["2. Edge & Frontend (Vercel Global Edge Network)"]
+        VERCEL["⚡ Console Dashboard TUMA<br/>https://console.tuma.eldnet.tech<br/>(React 18 + Vite + Tailwind CSS + Lucide)"]
     end
 
-    subgraph S3 ["3. Templates & Rendu"]
-        T_HBS["📑 Compilateur Handlebars"]
-        T_SCHEMA["✅ Validation Schémas Variables"]
-        T_TEXT["📝 Fallback Plain-Text Auto"]
-        T_INLINE["🎨 Minification & Inlining CSS"]
+    subgraph CLOUD_BACK ["3. API Gateway & Workers (Render Cloud Platform)"]
+        RENDER_API["🚀 API Core & Moteur d'Ingestion<br/>https://api.tuma.eldnet.tech/v1<br/>(Node.js 20 LTS + NestJS 10 Framework)"]
+        BULL_PROC["⚡ Processeur de Files Asynchrones<br/>(BullMQ Worker + Direct Fallback Dispatcher)"]
     end
 
-    subgraph S4 ["4. Suppression & Réputation"]
-        SUP_GUARD["🚫 Filtrage Proactif O(1)"]
-        SUP_BOUNCE["❌ Ingestion Hard Bounces (550)"]
-        SUP_FBL["🚨 Plaintes Spam (Feedback Loops)"]
-        SUP_UNSUB["🚪 Désinscription 1-Clic (RFC 8058)"]
+    subgraph CLOUD_DATA ["4. Persistance & Cache (Multi-Région)"]
+        ATLAS["🍃 MongoDB Atlas Replica Set<br/>(Base de données principale clusterisée)"]
+        REDIS_CLOUD["⚡ Redis 7 In-Memory<br/>(Gestion des files BullMQ & Idempotence)"]
     end
 
-    subgraph S5 ["5. Ingestion & Pipeline d'Envoi"]
-        ING_REST["⚡ Endpoint REST & SDKs (POST /v1/emails)"]
-        ING_IDEMP["🔒 Moteur Idempotence Anti-Doublon"]
-        ING_QUEUE["📦 Scheduler de Priorités (BullMQ)"]
-        ING_TRANS["🔌 Adaptateurs Transports (Mailpit/SES/SMTP)"]
+    subgraph CLOUD_TRANSPORT ["5. Relais d'Expédition & Passerelle HTTPS"]
+        LWS_BRIDGE["🛡️ LWS HTTPS Bridge (Port 443)<br/>https://bridges.eldnet.tech/tuma-bridge.php<br/>(Contournement du blocage de ports SMTP)"]
+        LWS_SMTP["📬 Serveur SMTP Authentifié LWS<br/>mail.eldnet.tech (Ports 587 STARTTLS / 465 SSL)<br/>(SPF / DKIM / DMARC Valides)"]
+        FALLBACK_API["☁️ APIs de Secours Externes<br/>Resend HTTPS API / Brevo HTTPS API"]
     end
 
-    subgraph S6 ["6. Tracking & Télémétrie"]
-        TRK_PIX["👁️ Serveur Pixel 1x1 (< 5ms)"]
-        TRK_LINK["🔗 Proxy de Redirection Clics (HTTP 302)"]
-        TRK_BOT["🤖 Filtre Anti-Scanners & Bots"]
-        TRK_LOG["⏱️ Journal d'Audit Immuable"]
+    subgraph RECIPIENTS ["6. Récepteurs Finaux"]
+        INBOX["📨 Boîtes de Réception (Gmail, Outlook, Yahoo)<br/>100% Inbox (Délivrabilité Certifiée)"]
     end
 
-    subgraph S7 ["7. Webhooks & Bus d'Événements"]
-        WH_SUB["🔔 Souscriptions d'URLs par Événement"]
-        WH_SIGN["🔐 Signature Cryptographique HMAC SHA256"]
-        WH_RETRY["🔄 Retry Exponentiel (5 essais)"]
-        WH_AUDIT["📊 Journal des Tentatives & Codes HTTP"]
-    end
+    WEB_APP --> VERCEL
+    VERCEL --> RENDER_API
+    NODE_CLI --> RENDER_API
+    FRONT_CLI --> RENDER_API
 
-    subgraph S8 ["8. Dashboard Web (React + Tailwind)"]
-        DASH_LOGS["📜 Visualiseur de Logs en Direct & Timelines"]
-        DASH_DNS["🌐 Gestionnaire de Domaines & Statuts DNS"]
-        DASH_TPL["📝 Éditeur de Templates & Prévisualisation"]
-        DASH_KEYS["🔑 Console de Clés API & Webhooks"]
-    end
+    RENDER_API --> ATLAS
+    RENDER_API --> REDIS_CLOUD
+    RENDER_API --> BULL_PROC
 
-    S1 --> S5
-    S2 --> S5
-    S3 --> S5
-    S4 --> S5
-    S5 --> S6
-    S6 --> S7
-    S8 -.->|Administration & Consultation| S1
-    S8 -.->|Configuration| S2
-    S8 -.->|Création| S3
-    S8 -.->|Audit| S6
+    BULL_PROC --> LWS_BRIDGE
+    BULL_PROC -.->|Fallback si bridge indisponible| FALLBACK_API
+    LWS_BRIDGE --> LWS_SMTP
+    LWS_SMTP --> INBOX
+    FALLBACK_API --> INBOX
 ```
 
 ---
 
 ## 2. Architecture des Composants Logiciels
 
-L'application repose sur une architecture modulaire **NestJS** découplée avec injection de dépendances, complétée par un pool de workers **BullMQ**, une interface **React (Vite + Tailwind)** et deux SDKs clients.
+L'application repose sur une architecture modulaire **NestJS** découplée avec injection de dépendances, complétée par un pool de processeurs hybrides, la console web React et les packages SDK clients.
 
-> 🎨 **Fichier source Draw.io** : [`docs/diagrams/06-architecture-composants.drawio`](./diagrams/06-architecture-composants.drawio) *(Ouvrable directement dans [app.diagrams.net](https://app.diagrams.net) ou via l'extension VS Code Draw.io)*
+> 🎨 **Fichier source Draw.io** : [`docs/diagrams/06-architecture-composants.drawio`](./diagrams/06-architecture-composants.drawio)
 
 ```mermaid
 flowchart TD
-    subgraph LAYER1 ["1. Couche Clients & Interface"]
-        SDK_NODE["📦 @platform/sdk-node<br/>(Backend Node.js / TypeScript)"]
-        SDK_WEB["📦 @platform/sdk-browser<br/>(Client JS / Formulaires)"]
-        UI_DASH["💻 Dashboard Web SPA<br/>(React + Vite + Tailwind + TanStack Query)"]
-        CLIENT_SRV["🌐 Serveurs Clients<br/>(Endpoints récepteurs de Webhooks)"]
+    subgraph LAYER1 ["1. Couche Clients & Interfaces"]
+        SDK_NODE["📦 @tuma/sdk<br/>(Backend Node.js / TypeScript / ESM)"]
+        SDK_WEB["📦 @tuma/browser<br/>(Client JS / Formulaires sans serveur)"]
+        UI_DASH["💻 Console Web SPA (Vercel)<br/>(React + Vite + Tailwind + Contexts)"]
+        CLIENT_SRV["🌐 Serveurs Webhook Clients<br/>(Endpoints HTTP récepteurs)"]
     end
 
     subgraph LAYER2 ["2. Backend Modulaire (NestJS Framework)"]
-        subgraph MODULES_API ["Modules Fonctionnels Core"]
-            M_AUTH["🔑 AuthModule<br/>• ApiKeyGuard (sk/pk)<br/>• OriginCorsGuard<br/>• RateLimitInterceptor<br/>• Argon2Service"]
-            M_DOM["🌐 DomainsModule<br/>• DomainsController<br/>• DnsResolverService<br/>• DkimGenerator (RSA)"]
-            M_TPL["📑 TemplatesModule<br/>• TemplatesController<br/>• HandlebarsService<br/>• SchemaValidator"]
-            M_SUP["🛡️ SuppressionsModule<br/>• SuppressionGuard<br/>• BounceHandlerService<br/>• FblComplaintListener"]
-            M_EML["📨 EmailsModule<br/>• EmailsController<br/>• IdempotencyService<br/>• EmailQueueProducer"]
+        subgraph MODULES_CORE ["Modules Métier Core"]
+            M_AUTH["🔑 AuthModule<br/>• Register & Activation OTP<br/>• Tokenized Password Reset<br/>• ApiKeyGuard (sk/pk)<br/>• Argon2id Hashing"]
+            M_DOM["🌐 DomainsModule<br/>• RSA 2048 Keypair Gen<br/>• AES-256-GCM Vault<br/>• DNS Native Resolver"]
+            M_TPL["📑 TemplatesModule<br/>• Handlebars Compiler<br/>• Schema Validator<br/>• Auto-Plain-Text"]
+            M_SUP["🛡️ SuppressionsModule<br/>• O(1) Guard<br/>• Bounce & Complaint Handler"]
+            M_EML["📨 EmailsModule<br/>• POST /v1/emails (Backend)<br/>• POST /v1/emails/client-send<br/>• Idempotency Engine"]
         end
 
         subgraph MODULES_EXEC ["Modules d'Exécution & Workers"]
-            M_TRK["👁️ TrackingModule<br/>• PixelController (GET /open)<br/>• ClickProxy (GET /click)<br/>• BotDetectorService"]
-            M_QUEUES["⚡ QueuesModule (BullMQ Processors)<br/>• EmailSendProcessor<br/>• TrackingProcessor<br/>• WebhookProcessor<br/>• DeadLetterService"]
-            M_HOOKS["🔔 WebhooksModule<br/>• WebhookDispatcherService<br/>• HmacSignerService (SHA256)<br/>• HttpRetryClient"]
-            M_TRANS["🔌 TransportersModule<br/>• MailpitMockAdapter (Dev)<br/>• AwsSesAdapter (Prod)<br/>• SmtpRelayAdapter"]
+            M_TRK["👁️ TrackingModule<br/>• Pixel Controller (/v1/tracking/open)<br/>• Click Proxy (/v1/tracking/click)"]
+            M_QUEUES["⚡ QueuesModule<br/>• EmailSendProcessor<br/>• Direct Fallback Dispatcher<br/>• Auto-Rescue Timeout (1s)"]
+            M_HOOKS["🔔 WebhooksModule<br/>• HMAC-SHA256 Signer<br/>• Dispatcher HTTP sortant"]
+            M_TRANS["🔌 TransportersModule<br/>• LWS HTTPS Bridge Adapter<br/>• Resend / Brevo API Adapters<br/>• Nodemailer Standard Relay"]
         end
 
         subgraph MODULES_DATA ["Accès aux Données & Drivers"]
-            DRV_MONGO["🍃 Mongoose ODM Connection Pool<br/>(Org, ApiKey, Domain, Template, Email, Event, Suppression)"]
-            DRV_REDIS["⚡ IORedis Connection Pool<br/>(BullMQ Queues, Idempotency Cache, Rate-Limiters)"]
+            DRV_MONGO["🍃 Mongoose ODM Connection Pool<br/>(Users, Orgs, Keys, Domains, Emails, Events, Suppressions)"]
+            DRV_REDIS["⚡ IORedis Connection Pool<br/>(BullMQ Queues, Idempotency Cache)"]
         end
     end
 
-    subgraph LAYER3 ["3. Infrastructure Runtime (Docker / Cloud)"]
-        INFRA_MONGO["🍃 MongoDB 7.0<br/>Port 27017"]
-        INFRA_REDIS["⚡ Redis 7.2<br/>Port 6379"]
-        INFRA_MAILPIT["📬 Mailpit SMTP & UI<br/>Ports 1025 / 8025"]
-        INFRA_SES["☁️ AWS SES / SMTP Externe<br/>(Production)"]
-    end
-
-    LAYER1 -->|Appels HTTP / REST| MODULES_API
-    LAYER1 -->|Requêtes de Tracking| M_TRK
-    M_EML -->|Job d'envoi| M_QUEUES
-    M_QUEUES -->|Rendu & Envoi| M_TRANS
+    LAYER1 -->|Appels REST HTTPS| MODULES_CORE
+    LAYER1 -->|Tracking Pixel / Liens| M_TRK
+    M_EML -->|Dispatch Job / Direct| M_QUEUES
+    M_QUEUES -->|Rendu, DKIM & Expédition| M_TRANS
     M_QUEUES -->|Événements sortants| M_HOOKS
-    M_HOOKS -->|Notification POST| CLIENT_SRV
+    M_HOOKS -->|Notification HTTP POST| CLIENT_SRV
 
-    MODULES_API --> DRV_MONGO
-    MODULES_API --> DRV_REDIS
+    MODULES_CORE --> DRV_MONGO
+    MODULES_CORE --> DRV_REDIS
     MODULES_EXEC --> DRV_MONGO
     MODULES_EXEC --> DRV_REDIS
-
-    DRV_MONGO --> INFRA_MONGO
-    DRV_REDIS --> INFRA_REDIS
-    M_TRANS --> INFRA_MAILPIT
-    M_TRANS --> INFRA_SES
 ```
 
 ---
 
 ## 3. Choix Technologiques & Justifications
 
-| Composant | Technologie | Rôle & Justification |
+| Composant | Technologie | Rôle & Rationale Technique |
 | :--- | :--- | :--- |
-| **Framework Backend** | **NestJS (TypeScript)** | Architecture d'entreprise modulaire, injection de dépendances, décorateurs et maintenabilité. |
-| **Base de Données** | **MongoDB 7+ (Mongoose)** | Stockage flexible et évolutif pour les payloads d'emails, logs de tracking et modèles de données polymorphes. |
-| **Files d'Attente & Cache** | **Redis 7+ & BullMQ** | Gestion haute performance des jobs asynchrones, priorités d'envoi, rate-limiting et re-tentatives. |
+| **Framework Backend** | **NestJS 10 (TypeScript)** | Architecture modulaire d'entreprise, injection de dépendances, décorateurs stricts et robustesse. |
+| **Base de Données** | **MongoDB Atlas 7+ (Mongoose)** | Stockage flexible et évolutif pour les documents d'emails, logs de tracking et modèles polymorphes. |
+| **Files d'Attente & Cache** | **Redis 7 & BullMQ** | Gestion haute performance des jobs asynchrones, priorités d'envoi et isolation des pics de trafic. |
 | **Moteur de Templates** | **Handlebars.js** | Rendu rapide et sécurisé côté serveur avec interpolation de variables (`{{nom}}`). |
-| **Transport de Mail (Dev)** | **Mailpit** | Serveur SMTP local léger avec interface Web pour intercepter et inspecter les emails envoyés en développement sans coût. |
-| **Transport de Mail (Prod)**| **AWS SES / SMTP Provider** | Adaptateurs interchangeables pour l'expédition réelle à grande échelle. |
-| **Dashboard Frontend** | **React + Vite + Tailwind CSS** | Interface réactive, moderne et rapide pour visualiser les logs, gérer les domaines et configurer les clés d'API. |
+| **Cryptographie** | **Argon2id & AES-256-GCM** | Hachage résistant aux attaques GPU/ASIC pour les mots de passe et clés API, et chiffrement militaire pour les clés privées DKIM. |
+| **Passerelle d'Envoi Cloud** | **LWS PHP Bridge (`tuma-bridge.php`)** | Contournement natif du blocage des ports SMTP 587/465 sur Render via HTTPS, garantissant la conformité SPF et DKIM. |
+| **Console Développeur** | **React 18 + Vite + Tailwind CSS** | Interface ultra-rapide (déployée sur Vercel Edge), réactive, thème Obsidian/Emerald et commande palette (Cmd+K). |
 
 ---
 
-## 4. Environnement de Développement Local (`docker-compose.yml`)
+## 4. Variables d'Environnement de Production (`.env`)
 
-Pour développer sans friction, la stack locale complète s'exécute sous Docker :
+```ini
+# ==============================================================================
+# Configuration Générale de l'API
+# ==============================================================================
+PORT=3001
+NODE_ENV=production
+API_BASE_URL=https://api.tuma.eldnet.tech/v1
+DASHBOARD_URL=https://console.tuma.eldnet.tech
 
-```yaml
-version: '3.8'
+# ==============================================================================
+# Persistance MongoDB Atlas & Redis
+# ==============================================================================
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.mongodb.net/tuma_production?retryWrites=true&w=majority
+REDIS_HOST=redis-12345.c1.cloud.redislabs.com
+REDIS_PORT=12345
+REDIS_PASSWORD=votre_mot_de_passe_redis
 
-services:
-  # Base de données MongoDB
-  mongodb:
-    image: mongo:7.0
-    container_name: email_platform_mongodb
-    restart: always
-    ports:
-      - '27017:27017'
-    environment:
-      MONGO_INITDB_DATABASE: email_platform
-    volumes:
-      - mongo_data:/data/db
+# ==============================================================================
+# Sécurité & Cryptographie
+# ==============================================================================
+JWT_SECRET=super_secret_jwt_key_pour_les_sessions_utilisateurs_production
+MASTER_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
-  # Interface Web pour visualiser MongoDB
-  mongo-express:
-    image: mongo-express:latest
-    container_name: email_platform_mongo_express
-    restart: always
-    ports:
-      - '8081:8081'
-    environment:
-      ME_CONFIG_MONGODB_SERVER: mongodb
-      ME_CONFIG_BASICAUTH: 'false'
-    depends_on:
-      - mongodb
+# ==============================================================================
+# Passerelle SMTP & LWS Bridge (Anti-Spam & Anti-Blocage Port)
+# ==============================================================================
+SMTP_HOST=mail.eldnet.tech
+SMTP_PORT=587
+SMTP_USER=contact@eldnet.tech
+SMTP_PASS=VotreMotDePasseBoiteEmailLWS
+DEFAULT_FROM_EMAIL="Tuma Notifications <contact@eldnet.tech>"
 
-  # Cache & File d'attente Redis
-  redis:
-    image: redis:7.2-alpine
-    container_name: email_platform_redis
-    restart: always
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis_data:/data
+LWS_BRIDGE_URL=https://bridges.eldnet.tech/tuma-bridge.php
+LWS_BRIDGE_SECRET=53252ddafb841d3defe44023c025d56cd308a6dca1776d3f
 
-  # Serveur SMTP de test & Interface d'inspection des emails (Mailpit)
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: email_platform_mailpit
-    restart: always
-    ports:
-      - '1025:1025' # Port SMTP pour l'envoi
-      - '8025:8025' # Interface Web de prévisualisation des emails reçus
-    environment:
-      MP_MAX_MESSAGES: 500
-
-volumes:
-  mongo_data:
-  redis_data:
+# Fallbacks optionnels
+RESEND_API_KEY=
+BREVO_API_KEY=
 ```
 
 ---
 
-## 5. Arborescence du Projet Autonome
+## 5. Arborescence du Monorepo TUMA
 
-```
-email-platform/
-├── docker-compose.yml             # MongoDB + Redis + Mailpit
-├── .env.example
-├── README.md
-│
+```text
+tuma/
 ├── apps/
-│   ├── api/                       # API Core NestJS & Workers d'envoi
+│   ├── api/                          # Backend Core NestJS & Moteur d'Ingestion
 │   │   ├── src/
 │   │   │   ├── modules/
-│   │   │   │   ├── auth/          # Clés API (sk_..., pk_...) & Guards CORS
-│   │   │   │   ├── domains/       # Vérification DNS, DKIM, SPF
-│   │   │   │   ├── emails/        # Ingestion API (POST /v1/emails)
-│   │   │   │   ├── templates/     # Moteur Handlebars & CRUD Templates
-│   │   │   │   ├── suppressions/  # Blacklist & Protection Réputation
-│   │   │   │   ├── tracking/      # Pixel 1x1 & Redirection proxy de clics
-│   │   │   │   ├── webhooks/      # Dispatcher d'événements sortants
-│   │   │   │   └── queues/        # Workers BullMQ (EmailProcessor, WebhookProcessor)
-│   │   │   ├── transporters/      # Adapters (SMTP, SES, Mailpit Mock)
+│   │   │   │   ├── auth/             # Inscription, OTP, Reset Password, Clés API (sk/pk), Guards
+│   │   │   │   ├── domains/          # Génération DKIM RSA 2048, Chiffrement AES, Résolveur DNS
+│   │   │   │   ├── emails/           # Endpoints POST /v1/emails et POST /v1/emails/client-send
+│   │   │   │   ├── templates/        # Moteur Handlebars & CRUD Templates
+│   │   │   │   ├── suppressions/     # Liste de suppression O(1) & Détection de rebonds
+│   │   │   │   ├── tracking/         # Pixel 1x1 GIF transparent & Proxy de redirection de clics
+│   │   │   │   ├── webhooks/         # Dispatcher d'événements sortants signés HMAC-SHA256
+│   │   │   │   └── queues/           # Processeurs BullMQ et Dispatcher de secours direct
+│   │   │   ├── transporters/         # LWS Bridge Adapter, Resend, Brevo, Nodemailer
+│   │   │   ├── schemas/              # Schémas Mongoose (User, Org, ApiKey, Domain, Email...)
 │   │   │   └── main.ts
 │   │   └── package.json
 │   │
-│   └── dashboard/                 # Interface Web React / Tailwind
+│   └── dashboard/                    # Console Développeur React SPA (Vercel)
 │       ├── src/
-│       │   ├── pages/             # Emails Logs, Domaines, Clés API, Templates, Suppression List
-│       │   ├── components/        # Layout, Tables, Charts, Modals
-│       │   └── services/          # Client API
+│       │   ├── pages/                # Overview, EmailsLogs, Domaines, Clés, Templates, Playground
+│       │   ├── pages/auth/           # LoginPage, RegisterPage, ResetPasswordPage
+│       │   ├── context/              # AuthContext (Sessions JWT, Activation, Reset)
+│       │   ├── components/           # Layout, Header, CommandPalette, Modals, Tables, Charts
+│       │   └── services/             # Client API (api.ts)
 │       └── package.json
 │
-└── packages/
-    ├── sdk-node/                  # SDK TypeScript / Node.js (resend-like)
-    └── sdk-browser/               # SDK JavaScript Navigateur (emailjs-like)
-```
-
----
-
-## 6. Feuille de Route d'Implémentation (Phasage)
-
-```mermaid
-flowchart LR
-    P1["Phase 1 : Socle & Infra<br/>• Docker (Mongo, Redis, Mailpit)<br/>• Setup NestJS & Mongoose"] --> P2["Phase 2 : Authentification & Clés<br/>• Gestion sk_live & pk_live<br/>• Rate limiting & Guards CORS"]
-    P2 --> P3["Phase 3 : Queue & Moteur d'Envoi<br/>• BullMQ Workers<br/>• Transporter Mailpit/SMTP<br/>• Compilation Handlebars"]
-    P3 --> P4["Phase 4 : Tracking & Suppression<br/>• Pixel 1x1 & Redirect Proxy<br/>• Auto-Suppression bounces"]
-    P4 --> P5["Phase 5 : Dashboard Web<br/>• Visualisation des logs live<br/>• Gestion des clés & templates"]
+├── packages/
+│   ├── sdk/                          # SDK Officiel Node.js (@tuma/sdk)
+│   └── browser/                      # SDK Officiel Navigateur (@tuma/browser)
+│
+├── scripts/
+│   └── tuma-bridge.php               # Passerelle HTTPS LWS déployée sur public_html
+│
+└── docs/                             # Documentation d'Architecture, Spécifications & Guides
 ```
