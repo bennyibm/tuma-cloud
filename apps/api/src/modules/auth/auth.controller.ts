@@ -18,6 +18,24 @@ export class AuthController {
     );
   }
 
+  @Post('activate')
+  @HttpCode(HttpStatus.OK)
+  async activate(@Body() body: { email: string; otp: string }) {
+    if (!body.email || !body.otp) {
+      throw new UnauthorizedException("Veuillez fournir l'adresse email et le code OTP.");
+    }
+    return this.authService.activateAccount(body.email, body.otp);
+  }
+
+  @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
+  async resendOtp(@Body() body: { email: string }) {
+    if (!body.email) {
+      throw new UnauthorizedException("Veuillez fournir l'adresse email.");
+    }
+    return this.authService.resendActivationOtp(body.email);
+  }
+
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: { email: string; password?: string }) {

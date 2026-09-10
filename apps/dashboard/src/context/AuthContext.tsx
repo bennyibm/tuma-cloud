@@ -24,7 +24,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, pass: string) => Promise<void>;
-  register: (name: string, email: string, company: string, pass: string) => Promise<void>;
+  register: (name: string, email: string, company: string, pass: string) => Promise<{ requiresActivation?: boolean; email: string; message?: string }>;
+  activate: (email: string, otp: string) => Promise<void>;
+  resendOtp: (email: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => void;
 }
@@ -100,7 +102,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Adresse email ou mot de passe incorrect.');
+        const err: any = new Error(errorData.message || 'Adresse email ou mot de passe incorrect.');
+        if (errorData.requiresActivation) {
+          err.requiresActivation = true;
+          err.email = errorData.email || email.trim();
+        }
+        throw err;
       }
 
       const data = await res.json();
@@ -149,28 +156,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const data = await res.json();
-      localStorage.setItem('tuma_auth_token', data.token);
 
-      setUser({
-        id: data.user.id,
-        name: data.user.name,
-        email: data.user.email,
-        role: data.user.role || 'owner',
-        company: data.user.company || data.organization?.name || 'TUMA Cloud',
-        avatarUrl: '/tuma-icon.jpg',
-      });
+      // Si le compte nécessite une activation par code OTP (flux par défaut)
+      if (data.requiresActivation) {
+        return {
+          requiresActivation: true,
+          email: data.email || email.trim(),
+          message: data.message,
+        };
+      }
+
+      // Si connexion directe autorisée (fallback / tests)
+      if (data.token) {
+        localStorage.setItem('tuma_auth_token', data.token);
+      }
+
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          role: data.user.role || 'owner',
+          company: data.user.company || data.organization?.name || 'TUMA Cloud',
+          avatarUrl: '/tuma-icon.jpg',
+        });
+      }
 
       if (data.organization) {
         setOrganization({
           id: data.organization.id,
           name: data.organization.name,
           slug: data.organization.slug,
-          plan: data.organization.plan || 'starter',
-          monthlyQuota: data.organization.monthlyQuota || 10000,
+          plan: data.organization.plan || 'free',
+          monthlyQuota: data.organization.monthlyQuota || 1000,
+        });
+      }
+
+      return {
+        requiresActivation: false,
+        email: data.user?.email || email.trim(),
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const activate = async (email: string, otp: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/activate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          otp: otp.trim(),
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Code d'activation invalide ou expiré.");
+      }
+
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('tuma_auth_token', data.token);
+      }
+
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          role: data.user.role || 'owner',
+          company: data.user.company || data.organization?.name || 'TUMA Cloud',
+          avatarUrl: '/tuma-icon.jpg',
+        });
+      }
+
+      if (data.organization) {
+        setOrganization({
+          id: data.organization.id,
+          name: data.organization.name,
+          slug: data.organization.slug,
+          plan: data.organization.plan || 'free',
+          monthlyQuota: data.organization.monthlyQuota || 1000,
         });
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const resendOtp = async (email: string) => {
+    const res = await fetch(`${API_BASE}/auth/resend-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim() }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || "Impossible de renvoyer le code d'activation.");
     }
   };
 
@@ -197,6 +284,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         register,
+        activate,
+        resendOtp,
         resetPassword,
         logout,
       }}

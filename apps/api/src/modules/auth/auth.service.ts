@@ -1,29 +1,84 @@
-import { Injectable, Logger, ConflictException, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ConflictException,
+  UnauthorizedException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
-import * as nodemailer from 'nodemailer';
 import { ApiKey, ApiKeyDocument } from '../../schemas/api-key.schema';
 import { Organization, OrganizationDocument } from '../../schemas/organization.schema';
 import { User, UserDocument } from '../../schemas/user.schema';
+import { MailpitTransporter } from '../transporters/mailpit.transporter';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tuma_production_secret_key_jwt_super_secure_2026';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly mailer = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'localhost',
-    port: parseInt(process.env.SMTP_PORT || '1025', 10),
-    ignoreTLS: true,
-  });
 
   constructor(
     @InjectModel(ApiKey.name) private readonly apiKeyModel: Model<ApiKeyDocument>,
     @InjectModel(Organization.name) private readonly orgModel: Model<OrganizationDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    private readonly mailpitTransporter: MailpitTransporter,
   ) {}
+
+  /**
+   * Expédie l'email d'accueil contenant le code d'activation OTP
+   */
+  private async sendActivationEmail(email: string, name: string, otp: string) {
+    const fromAddress = process.env.SMTP_FROM || 'TUMA Cloud <contact@eldnet.tech>';
+    const subject = `🔐 Activez votre compte TUMA Cloud (Code : ${otp})`;
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F19; color: #F9FAFB; padding: 40px 24px; border-radius: 16px; max-width: 580px; margin: 0 auto; border: 1px solid #1F2937;">
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="color: #ffffff; font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">tuma<span style="color: #10B981;">.</span></h1>
+          <p style="color: #10B981; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin: 4px 0 0 0;">Infrastructure Cloud pour Développeurs</p>
+        </div>
+
+        <div style="background: #111827; padding: 32px; border-radius: 12px; border: 1px solid #1F2937;">
+          <h2 style="color: #ffffff; font-size: 18px; margin-top: 0; font-weight: 700;">Bienvenue, ${name} 👋</h2>
+          <p style="color: #9CA3AF; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;">
+            Votre compte d'organisation a été initialisé avec une offre gratuite de <strong>1 000 emails par mois</strong>. Pour sécuriser votre accès et commencer à expédier en direct, veuillez saisir le code de validation ci-dessous :
+          </p>
+
+          <div style="background: #05070B; border: 2px dashed #10B981; border-radius: 10px; padding: 20px; text-align: center; margin: 24px 0;">
+            <div style="color: #6B7280; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">Code de Validation OTP</div>
+            <div style="font-family: monospace; font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #10B981;">
+              ${otp}
+            </div>
+            <div style="color: #9CA3AF; font-size: 11px; margin-top: 8px;">Valable pendant 15 minutes</div>
+          </div>
+
+          <p style="color: #6B7280; font-size: 12px; line-height: 1.5; margin: 24px 0 0 0;">
+            ⚠️ Ne partagez jamais ce code. L'équipe TUMA ne vous demandera jamais votre mot de passe ou votre code OTP.
+          </p>
+        </div>
+
+        <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #1F2937;">
+          <p style="color: #6B7280; font-size: 11px; margin: 0;">
+            TUMA Cloud • Cluster d'Ingestion RDC & International<br />
+            Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email en toute sécurité.
+          </p>
+        </div>
+      </div>
+    `;
+
+    const text = `Bienvenue sur TUMA Cloud, ${name} !\n\nVotre code d'activation OTP est : ${otp}\n(Valable pendant 15 minutes)\n\nVotre compte dispose d'un quota d'accueil gratuit de 1 000 emails par mois.\n\nL'équipe TUMA Cloud`;
+
+    return this.mailpitTransporter.send({
+      from: fromAddress,
+      to: [email],
+      subject,
+      html,
+      text,
+    });
+  }
 
   /**
    * Génération de token JWT signé HMAC-SHA256
@@ -66,44 +121,75 @@ export class AuthService {
 
   /**
    * Inscription d'un nouvel utilisateur et création de son organisation
+   * Quota par défaut : 1 000 emails/mois. Envoi d'un code OTP à 6 chiffres par email.
    */
   async register(name: string, email: string, companyName: string, pass: string) {
     const normalizedEmail = email.toLowerCase().trim();
     const existing = await this.userModel.findOne({ email: normalizedEmail });
     if (existing) {
-      throw new ConflictException('Un compte existe déjà avec cette adresse email.');
+      if (!existing.isActivated) {
+        // L'utilisateur existe déjà mais n'a pas encore validé son compte : on lui renvoie un nouvel OTP
+        const newOtp = crypto.randomInt(100000, 999999).toString();
+        existing.activationOtp = newOtp;
+        existing.activationOtpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+        await existing.save();
+
+        try {
+          await this.sendActivationEmail(normalizedEmail, existing.name, newOtp);
+        } catch (err: any) {
+          this.logger.error(`Erreur ré-expédition OTP: ${err.message}`);
+        }
+
+        return {
+          success: true,
+          requiresActivation: true,
+          email: normalizedEmail,
+          message: "Un compte non activé existe déjà. Un nouveau code d'activation OTP vous a été envoyé par email.",
+        };
+      }
+      throw new ConflictException('Un compte actif existe déjà avec cette adresse email.');
     }
 
-    const orgSlug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).substring(2, 6);
+    const orgSlug =
+      companyName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).substring(2, 6);
+    
+    // Quota d'accueil officiel : 1 000 emails offerts
     const org = await this.orgModel.create({
       name: companyName || 'Mon Entreprise',
       slug: orgSlug,
-      plan: 'pro',
-      monthlyQuota: 10000,
+      plan: 'free',
+      monthlyQuota: 1000,
       monthlyUsage: 0,
       contactEmail: normalizedEmail,
     });
 
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
     const passwordHash = await argon2.hash(pass);
-    const user = await this.userModel.create({
+    await this.userModel.create({
       organizationId: org._id,
       name,
       email: normalizedEmail,
       passwordHash,
       role: 'owner',
+      isActivated: false,
+      activationOtp: otp,
+      activationOtpExpiresAt: otpExpiresAt,
     });
 
-    const token = this.generateJwt({ userId: user._id.toString(), orgId: org._id.toString(), email: user.email });
+    try {
+      await this.sendActivationEmail(normalizedEmail, name, otp);
+      this.logger.log(`[Activation] Email OTP expédié avec succès à ${normalizedEmail}`);
+    } catch (err: any) {
+      this.logger.error(`[Activation Error] Échec de l'envoi de l'email OTP à ${normalizedEmail}: ${err.message}`);
+    }
 
     return {
-      token,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        company: org.name,
-      },
+      success: true,
+      requiresActivation: true,
+      email: normalizedEmail,
+      message: "Compte créé avec succès. Un code d'activation à 6 chiffres a été envoyé à votre adresse email.",
       organization: {
         id: org._id.toString(),
         name: org.name,
@@ -115,7 +201,114 @@ export class AuthService {
   }
 
   /**
+   * Validation du code OTP et activation du compte
+   */
+  async activateAccount(email: string, otp: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await this.userModel.findOne({ email: normalizedEmail });
+    if (!user) {
+      throw new NotFoundException('Aucun compte trouvé avec cette adresse email.');
+    }
+
+    if (user.isActivated) {
+      const org = await this.orgModel.findById(user.organizationId);
+      const token = this.generateJwt({ userId: user._id.toString(), orgId: user.organizationId.toString(), email: user.email });
+      return {
+        success: true,
+        message: 'Votre compte est déjà activé.',
+        token,
+        user: {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          company: org ? org.name : 'Tuma Org',
+        },
+        organization: org
+          ? {
+              id: org._id.toString(),
+              name: org.name,
+              slug: org.slug,
+              plan: org.plan,
+              monthlyQuota: org.monthlyQuota,
+            }
+          : null,
+      };
+    }
+
+    if (!user.activationOtp || user.activationOtp !== otp.trim()) {
+      throw new BadRequestException('Code OTP invalide. Veuillez vérifier le code à 6 chiffres reçu par email.');
+    }
+
+    if (!user.activationOtpExpiresAt || user.activationOtpExpiresAt < new Date()) {
+      throw new BadRequestException('Ce code OTP a expiré. Veuillez cliquer sur "Renvoyer le code" pour en générer un nouveau.');
+    }
+
+    user.isActivated = true;
+    user.activationOtp = null;
+    user.activationOtpExpiresAt = null;
+    await user.save();
+
+    const org = await this.orgModel.findById(user.organizationId);
+    const token = this.generateJwt({ userId: user._id.toString(), orgId: user.organizationId.toString(), email: user.email });
+
+    this.logger.log(`[Activation] Compte ${normalizedEmail} activé avec succès !`);
+
+    return {
+      success: true,
+      message: 'Compte activé avec succès ! Bienvenue sur TUMA Cloud.',
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        company: org ? org.name : 'Tuma Org',
+      },
+      organization: org
+        ? {
+            id: org._id.toString(),
+            name: org.name,
+            slug: org.slug,
+            plan: org.plan,
+            monthlyQuota: org.monthlyQuota,
+          }
+        : null,
+    };
+  }
+
+  /**
+   * Renvoyer un nouveau code OTP d'activation
+   */
+  async resendActivationOtp(email: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await this.userModel.findOne({ email: normalizedEmail });
+    if (!user) {
+      throw new NotFoundException('Aucun compte trouvé avec cette adresse email.');
+    }
+
+    if (user.isActivated) {
+      return { success: true, message: 'Ce compte est déjà activé.' };
+    }
+
+    const newOtp = crypto.randomInt(100000, 999999).toString();
+    user.activationOtp = newOtp;
+    user.activationOtpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    try {
+      await this.sendActivationEmail(normalizedEmail, user.name, newOtp);
+      this.logger.log(`[Activation] Nouvel email OTP renvoyé à ${normalizedEmail}`);
+    } catch (err: any) {
+      this.logger.error(`[Activation Resend Error] Échec du renvoi OTP à ${normalizedEmail}: ${err.message}`);
+    }
+
+    return { success: true, message: "Un nouveau code d'activation a été envoyé à votre adresse email." };
+  }
+
+  /**
    * Connexion en mode réel avec Email & Mot de Passe (Argon2id)
+   * Contrôle strict de l'activation du compte
    */
   async login(email: string, pass: string) {
     const normalizedEmail = email.toLowerCase().trim();
@@ -140,6 +333,7 @@ export class AuthService {
         email: normalizedEmail,
         passwordHash: initialHash,
         role: 'owner',
+        isActivated: true,
       });
     }
 
@@ -150,6 +344,22 @@ export class AuthService {
     const isValid = await argon2.verify(user.passwordHash, pass);
     if (!isValid) {
       throw new UnauthorizedException('Adresse email ou mot de passe incorrect.');
+    }
+
+    // Auto-activation des comptes root / admin
+    if (!user.isActivated && (normalizedEmail === 'benny@tuma.dev' || normalizedEmail === 'admin@tuma.dev')) {
+      user.isActivated = true;
+      await user.save();
+    }
+
+    // Vérification de l'activation du compte
+    if (!user.isActivated) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: "Votre compte n'est pas encore activé. Veuillez saisir le code OTP envoyé par email.",
+        requiresActivation: true,
+        email: user.email,
+      });
     }
 
     const org = await this.orgModel.findById(user.organizationId);
@@ -221,16 +431,17 @@ export class AuthService {
       await user.save();
     }
 
-    // Expédition d'un vrai email via le transport
+    // Expédition d'un vrai email via le transport officiel
     const dashboardUrl = process.env.DASHBOARD_URL || 'https://console.tuma.eldnet.tech';
+    const fromAddress = process.env.SMTP_FROM || 'Tuma Security <contact@eldnet.tech>';
     try {
-      await this.mailer.sendMail({
-        from: '"Tuma Security" <security@tuma.dev>',
-        to: normalizedEmail,
+      await this.mailpitTransporter.send({
+        from: fromAddress,
+        to: [normalizedEmail],
         subject: '🔐 Réinitialisation de votre mot de passe TUMA Cloud',
         html: `
-          <div style="font-family: sans-serif; background: #0B0F19; color: #F9FAFB; padding: 32px; border-radius: 12px;">
-            <h2 style="color: #10B981;">Sécurité & Authentification TUMA</h2>
+          <div style="font-family: sans-serif; background: #0B0F19; color: #F9FAFB; padding: 32px; border-radius: 12px; max-width: 540px; margin: 0 auto; border: 1px solid #1F2937;">
+            <h2 style="color: #10B981; margin-top: 0;">Sécurité & Authentification TUMA</h2>
             <p>Bonjour,</p>
             <p>Une demande de réinitialisation de mot de passe a été émise pour votre compte (<strong>${normalizedEmail}</strong>).</p>
             <div style="margin: 24px 0;">
@@ -243,6 +454,7 @@ export class AuthService {
             <p style="color: #6B7280; font-size: 11px;">Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email en toute sécurité.</p>
           </div>
         `,
+        text: `Bonjour,\n\nUne demande de réinitialisation de mot de passe a été émise pour votre compte (${normalizedEmail}).\nJeton sécurisé : ${resetToken}\n\nL'équipe TUMA Cloud`,
       });
       this.logger.log(`Password reset email dispatched to ${normalizedEmail}`);
     } catch (err: any) {

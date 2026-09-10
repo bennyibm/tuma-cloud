@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Zap,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export type NavigationTab =
   | 'overview'
@@ -31,6 +32,9 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, emailCount = 5 }) => {
+  const { organization } = useAuth();
+  const quota = organization?.monthlyQuota ?? 1000;
+  const planName = organization?.plan ? `Plan ${organization.plan.charAt(0).toUpperCase() + organization.plan.slice(1)}` : 'Plan Gratuit';
   const menuItems = [
     { id: 'overview', label: "Vue d'Ensemble", icon: BarChart3, badge: 'Live' },
     { id: 'emails', label: 'Logs d Emails', icon: Mail, badge: `${emailCount}` },
@@ -121,18 +125,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, email
         <div className="bg-[#111827] rounded-xl p-3 border border-[#1F2937]">
           <div className="flex items-center justify-between text-xs mb-2">
             <span className="text-[#9CA3AF]">Quota Mensuel</span>
-            <span className="font-semibold text-white">1,250 / 10,000</span>
+            <span className="font-semibold text-white">0 / {quota.toLocaleString()}</span>
           </div>
           <div className="w-full bg-[#1F2937] rounded-full h-1.5 overflow-hidden">
             <div
               className="bg-gradient-to-r from-[#10B981] to-[#06B6D4] h-1.5 rounded-full"
-              style={{ width: '12.5%' }}
+              style={{ width: '4%' }}
             />
           </div>
           <div className="mt-3 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-[11px]">
             <div className="flex items-center gap-1.5 text-[#10B981]">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Plan Pro RDC</span>
+              <span>{planName}</span>
             </div>
             <span className="text-[#6B7280]">Kinshasa DC</span>
           </div>

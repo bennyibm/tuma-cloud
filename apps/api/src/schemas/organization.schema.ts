@@ -14,7 +14,7 @@ export class Organization extends Document {
   @Prop({ required: true, enum: ['free', 'starter', 'pro', 'scale', 'enterprise'], default: 'free' })
   plan: string;
 
-  @Prop({ required: true, default: 3000 })
+  @Prop({ required: true, default: 1000 })
   monthlyQuota: number;
 
   @Prop({ required: true, default: 0 })

@@ -25,6 +25,15 @@ export class User {
 
   @Prop({ default: null })
   resetTokenExpiresAt?: Date;
+
+  @Prop({ default: false, index: true })
+  isActivated: boolean;
+
+  @Prop({ default: null })
+  activationOtp?: string;
+
+  @Prop({ default: null })
+  activationOtpExpiresAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
