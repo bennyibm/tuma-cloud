@@ -19,12 +19,14 @@ interface RegisterPageProps {
   onSwitchToLogin: () => void;
   initialEmail?: string;
   initialStep?: 'form' | 'otp';
+  initialOtp?: string;
 }
 
 export const RegisterPage: React.FC<RegisterPageProps> = ({
   onSwitchToLogin,
   initialEmail = '',
   initialStep = 'form',
+  initialOtp = '',
 }) => {
   const { register, activate, resendOtp } = useAuth();
   const [step, setStep] = useState<'form' | 'otp'>(initialStep);
@@ -37,7 +39,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // OTP step state
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState(initialOtp);
   const [otpSuccess, setOtpSuccess] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
 
@@ -48,6 +50,26 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
       return () => clearTimeout(timer);
     }
   }, [cooldown]);
+
+  // Si l'utilisateur clique sur le lien magique dans son email (?email=...&otp=...)
+  useEffect(() => {
+    if (initialStep === 'otp' && initialEmail && initialOtp && initialOtp.length === 6) {
+      const autoVerify = async () => {
+        setLoading(true);
+        setError(null);
+        setOtpSuccess("Vérification automatique de votre compte en cours...");
+        try {
+          await activate(initialEmail.trim(), initialOtp.trim());
+        } catch (err: any) {
+          setError(err.message || "Code d'activation invalide ou expiré.");
+          setOtpSuccess(null);
+        } finally {
+          setLoading(false);
+        }
+      };
+      autoVerify();
+    }
+  }, [initialEmail, initialOtp, initialStep]);
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,9 +82,10 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
       }
       const res = await register(name, email, company || 'Startup', password);
       if (res.requiresActivation) {
+        setEmail(res.email || email.trim());
         setStep('otp');
         setCooldown(60);
-        setOtpSuccess(res.message || "Un code d'activation à 6 chiffres vous a été envoyé.");
+        setOtpSuccess(res.message || `Un code d'activation à 6 chiffres a été envoyé à ${res.email || email.trim()}.`);
       }
     } catch (err: any) {
       setError(err.message || "Erreur lors de l'inscription");

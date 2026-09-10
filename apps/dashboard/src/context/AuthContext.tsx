@@ -92,27 +92,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, pass: string) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password: pass }),
-      });
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), password: pass }),
+    });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        const err: any = new Error(errorData.message || 'Adresse email ou mot de passe incorrect.');
-        if (errorData.requiresActivation) {
-          err.requiresActivation = true;
-          err.email = errorData.email || email.trim();
-        }
-        throw err;
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      const err: any = new Error(errorData.message || 'Adresse email ou mot de passe incorrect.');
+      if (errorData.requiresActivation) {
+        err.requiresActivation = true;
+        err.email = errorData.email || email.trim();
       }
+      throw err;
+    }
 
-      const data = await res.json();
+    const data = await res.json();
+    localStorage.setItem('tuma_auth_token', data.token);
+
+    setUser({
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      role: data.user.role || 'owner',
+      company: data.user.company || data.organization?.name || 'TUMA Cloud',
+      avatarUrl: '/tuma-icon.jpg',
+    });
+
+    if (data.organization) {
+      setOrganization({
+        id: data.organization.id,
+        name: data.organization.name,
+        slug: data.organization.slug,
+        plan: data.organization.plan || 'pro',
+        monthlyQuota: data.organization.monthlyQuota || 50000,
+      });
+    }
+  };
+
+  const register = async (name: string, email: string, company: string, pass: string) => {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: name.trim(),
+        email: email.trim(),
+        company: company.trim(),
+        password: pass,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || "Erreur lors de l'inscription.");
+    }
+
+    const data = await res.json();
+
+    // Si le compte nécessite une activation par code OTP (flux par défaut)
+    if (data.requiresActivation) {
+      return {
+        requiresActivation: true,
+        email: data.email || email.trim(),
+        message: data.message,
+      };
+    }
+
+    // Si connexion directe autorisée (fallback / tests)
+    if (data.token) {
       localStorage.setItem('tuma_auth_token', data.token);
+    }
 
+    if (data.user) {
       setUser({
         id: data.user.id,
         name: data.user.name,
@@ -121,130 +173,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         company: data.user.company || data.organization?.name || 'TUMA Cloud',
         avatarUrl: '/tuma-icon.jpg',
       });
-
-      if (data.organization) {
-        setOrganization({
-          id: data.organization.id,
-          name: data.organization.name,
-          slug: data.organization.slug,
-          plan: data.organization.plan || 'pro',
-          monthlyQuota: data.organization.monthlyQuota || 50000,
-        });
-      }
-    } finally {
-      setIsLoading(false);
     }
-  };
 
-  const register = async (name: string, email: string, company: string, pass: string) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          company: company.trim(),
-          password: pass,
-        }),
+    if (data.organization) {
+      setOrganization({
+        id: data.organization.id,
+        name: data.organization.name,
+        slug: data.organization.slug,
+        plan: data.organization.plan || 'free',
+        monthlyQuota: data.organization.monthlyQuota || 1000,
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur lors de l'inscription.");
-      }
-
-      const data = await res.json();
-
-      // Si le compte nécessite une activation par code OTP (flux par défaut)
-      if (data.requiresActivation) {
-        return {
-          requiresActivation: true,
-          email: data.email || email.trim(),
-          message: data.message,
-        };
-      }
-
-      // Si connexion directe autorisée (fallback / tests)
-      if (data.token) {
-        localStorage.setItem('tuma_auth_token', data.token);
-      }
-
-      if (data.user) {
-        setUser({
-          id: data.user.id,
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role || 'owner',
-          company: data.user.company || data.organization?.name || 'TUMA Cloud',
-          avatarUrl: '/tuma-icon.jpg',
-        });
-      }
-
-      if (data.organization) {
-        setOrganization({
-          id: data.organization.id,
-          name: data.organization.name,
-          slug: data.organization.slug,
-          plan: data.organization.plan || 'free',
-          monthlyQuota: data.organization.monthlyQuota || 1000,
-        });
-      }
-
-      return {
-        requiresActivation: false,
-        email: data.user?.email || email.trim(),
-      };
-    } finally {
-      setIsLoading(false);
     }
+
+    return {
+      requiresActivation: false,
+      email: data.user?.email || email.trim(),
+    };
   };
 
   const activate = async (email: string, otp: string) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/auth/activate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim(),
-          otp: otp.trim(),
-        }),
+    const res = await fetch(`${API_BASE}/auth/activate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim(),
+        otp: otp.trim(),
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || "Code d'activation invalide ou expiré.");
+    }
+
+    const data = await res.json();
+    if (data.token) {
+      localStorage.setItem('tuma_auth_token', data.token);
+    }
+
+    if (data.user) {
+      setUser({
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role || 'owner',
+        company: data.user.company || data.organization?.name || 'TUMA Cloud',
+        avatarUrl: '/tuma-icon.jpg',
       });
+    }
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Code d'activation invalide ou expiré.");
-      }
-
-      const data = await res.json();
-      if (data.token) {
-        localStorage.setItem('tuma_auth_token', data.token);
-      }
-
-      if (data.user) {
-        setUser({
-          id: data.user.id,
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role || 'owner',
-          company: data.user.company || data.organization?.name || 'TUMA Cloud',
-          avatarUrl: '/tuma-icon.jpg',
-        });
-      }
-
-      if (data.organization) {
-        setOrganization({
-          id: data.organization.id,
-          name: data.organization.name,
-          slug: data.organization.slug,
-          plan: data.organization.plan || 'free',
-          monthlyQuota: data.organization.monthlyQuota || 1000,
-        });
-      }
-    } finally {
-      setIsLoading(false);
+    if (data.organization) {
+      setOrganization({
+        id: data.organization.id,
+        name: data.organization.name,
+        slug: data.organization.slug,
+        plan: data.organization.plan || 'free',
+        monthlyQuota: data.organization.monthlyQuota || 1000,
+      });
     }
   };
 

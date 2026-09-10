@@ -33,6 +33,9 @@ export class AuthService {
    */
   private async sendActivationEmail(email: string, name: string, otp: string) {
     const fromAddress = process.env.SMTP_FROM || 'TUMA Cloud <contact@eldnet.tech>';
+    const dashboardUrl = process.env.DASHBOARD_URL || 'https://console.tuma.eldnet.tech';
+    const activationLink = `${dashboardUrl}/activate?email=${encodeURIComponent(email)}&otp=${otp}`;
+
     const subject = `🔐 Activez votre compte TUMA Cloud (Code : ${otp})`;
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F19; color: #F9FAFB; padding: 40px 24px; border-radius: 16px; max-width: 580px; margin: 0 auto; border: 1px solid #1F2937;">
@@ -55,7 +58,17 @@ export class AuthService {
             <div style="color: #9CA3AF; font-size: 11px; margin-top: 8px;">Valable pendant 15 minutes</div>
           </div>
 
-          <p style="color: #6B7280; font-size: 12px; line-height: 1.5; margin: 24px 0 0 0;">
+          <div style="text-align: center; margin: 30px 0 16px 0;">
+            <a href="${activationLink}" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; letter-spacing: 0.3px; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);">
+              🚀 Activer mon compte en 1 clic
+            </a>
+          </div>
+
+          <p style="text-align: center; color: #9CA3AF; font-size: 12px; margin: 0 0 24px 0;">
+            Ou rendez-vous sur <a href="${dashboardUrl}" style="color: #10B981; text-decoration: underline;">la console TUMA</a> et saisissez votre code OTP ci-dessus.
+          </p>
+
+          <p style="color: #6B7280; font-size: 12px; line-height: 1.5; margin: 24px 0 0 0; border-top: 1px solid #1F2937; padding-top: 16px;">
             ⚠️ Ne partagez jamais ce code. L'équipe TUMA ne vous demandera jamais votre mot de passe ou votre code OTP.
           </p>
         </div>
@@ -69,7 +82,7 @@ export class AuthService {
       </div>
     `;
 
-    const text = `Bienvenue sur TUMA Cloud, ${name} !\n\nVotre code d'activation OTP est : ${otp}\n(Valable pendant 15 minutes)\n\nVotre compte dispose d'un quota d'accueil gratuit de 1 000 emails par mois.\n\nL'équipe TUMA Cloud`;
+    const text = `Bienvenue sur TUMA Cloud, ${name} !\n\nVotre code d'activation OTP est : ${otp}\n(Valable pendant 15 minutes)\n\nLien d'activation directe : ${activationLink}\n\nVotre compte dispose d'un quota d'accueil gratuit de 1 000 emails par mois.\n\nL'équipe TUMA Cloud`;
 
     return this.mailpitTransporter.send({
       from: fromAddress,

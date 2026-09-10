@@ -54,6 +54,9 @@ function DashboardApp() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      if (window.location.pathname.startsWith('/activate') || window.location.search.includes('otp=')) {
+        window.history.replaceState({}, '', '/');
+      }
       const completed = localStorage.getItem('tuma_onboarding_completed');
       if (!completed) {
         setIsOnboardingOpen(true);
@@ -145,6 +148,25 @@ function DashboardApp() {
 
   // Si l'utilisateur n'est pas connecté, afficher le flux d'authentification
   if (!isAuthenticated) {
+    const searchParams = new URLSearchParams(window.location.search);
+    const paramEmail = searchParams.get('email') || '';
+    const paramOtp = searchParams.get('otp') || '';
+    const isActivateRoute = window.location.pathname.startsWith('/activate') || (paramEmail && paramOtp);
+
+    if (isActivateRoute) {
+      return (
+        <RegisterPage
+          onSwitchToLogin={() => {
+            window.history.replaceState({}, '', '/');
+            setAuthView('login');
+          }}
+          initialStep="otp"
+          initialEmail={paramEmail}
+          initialOtp={paramOtp}
+        />
+      );
+    }
+
     if (authView === 'register') {
       return <RegisterPage onSwitchToLogin={() => setAuthView('login')} />;
     }
