@@ -446,6 +446,7 @@ export class AuthService {
 
     // Expédition d'un vrai email via le transport officiel
     const dashboardUrl = process.env.DASHBOARD_URL || 'https://console.tuma.eldnet.tech';
+    const resetLink = `${dashboardUrl}/reset-password?email=${encodeURIComponent(normalizedEmail)}&token=${resetToken}`;
     const fromAddress = process.env.SMTP_FROM || 'Tuma Security <contact@eldnet.tech>';
     try {
       await this.mailpitTransporter.send({
@@ -453,21 +454,36 @@ export class AuthService {
         to: [normalizedEmail],
         subject: '🔐 Réinitialisation de votre mot de passe TUMA Cloud',
         html: `
-          <div style="font-family: sans-serif; background: #0B0F19; color: #F9FAFB; padding: 32px; border-radius: 12px; max-width: 540px; margin: 0 auto; border: 1px solid #1F2937;">
-            <h2 style="color: #10B981; margin-top: 0;">Sécurité & Authentification TUMA</h2>
-            <p>Bonjour,</p>
-            <p>Une demande de réinitialisation de mot de passe a été émise pour votre compte (<strong>${normalizedEmail}</strong>).</p>
-            <div style="margin: 24px 0;">
-              <a href="${dashboardUrl}" style="background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                Réinitialiser mon mot de passe
-              </a>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F19; color: #F9FAFB; padding: 40px 24px; border-radius: 16px; max-width: 580px; margin: 0 auto; border: 1px solid #1F2937;">
+            <div style="text-align: center; margin-bottom: 32px;">
+              <h1 style="color: #ffffff; font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">tuma<span style="color: #10B981;">.</span></h1>
+              <p style="color: #10B981; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin: 4px 0 0 0;">Sécurité & Authentification</p>
             </div>
-            <p style="color: #9CA3AF; font-size: 11px;">Jeton sécurisé : <code style="color: #FF6B00;">${resetToken}</code> (Valide 60 minutes)</p>
-            <hr style="border: 1px solid #1F2937; margin-top: 24px;" />
-            <p style="color: #6B7280; font-size: 11px;">Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email en toute sécurité.</p>
+
+            <div style="background: #111827; padding: 32px; border-radius: 12px; border: 1px solid #1F2937;">
+              <h2 style="color: #ffffff; font-size: 18px; margin-top: 0; font-weight: 700;">Réinitialisation de votre mot de passe</h2>
+              <p style="color: #9CA3AF; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;">
+                Une demande de réinitialisation de mot de passe a été émise pour votre compte (<strong>${normalizedEmail}</strong>). Cliquez sur le bouton ci-dessous pour choisir votre nouveau mot de passe :
+              </p>
+
+              <div style="text-align: center; margin: 28px 0 20px 0;">
+                <a href="${resetLink}" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; letter-spacing: 0.3px; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);">
+                  🔑 Définir mon nouveau mot de passe
+                </a>
+              </div>
+
+              <p style="text-align: center; color: #6B7280; font-size: 11px; margin: 0 0 16px 0;">
+                Ce lien sécurisé est valable pendant 60 minutes.
+              </p>
+
+              <hr style="border: none; border-top: 1px solid #1F2937; margin: 24px 0 16px 0;" />
+              <p style="color: #6B7280; font-size: 11px; line-height: 1.5; margin: 0;">
+                Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email en toute sécurité. Votre mot de passe actuel restera inchangé.
+              </p>
+            </div>
           </div>
         `,
-        text: `Bonjour,\n\nUne demande de réinitialisation de mot de passe a été émise pour votre compte (${normalizedEmail}).\nJeton sécurisé : ${resetToken}\n\nL'équipe TUMA Cloud`,
+        text: `Bonjour,\n\nUne demande de réinitialisation de mot de passe a été émise pour votre compte (${normalizedEmail}).\n\nCliquez sur le lien suivant pour définir un nouveau mot de passe :\n${resetLink}\n\nCe lien est valide 60 minutes.\n\nL'équipe TUMA Cloud`,
       });
       this.logger.log(`Password reset email dispatched to ${normalizedEmail}`);
     } catch (err: any) {
@@ -475,6 +491,67 @@ export class AuthService {
     }
 
     return { success: true, message: 'Lien de réinitialisation envoyé si le compte existe.' };
+  }
+
+  /**
+   * Valide le jeton et met à jour le mot de passe de l'utilisateur
+   */
+  async confirmPasswordReset(email: string, token: string, newPass: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await this.userModel.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      throw new NotFoundException('Aucun compte trouvé avec cette adresse email.');
+    }
+
+    if (!user.resetToken || user.resetToken !== token.trim()) {
+      throw new BadRequestException('Jeton de réinitialisation invalide ou déjà utilisé.');
+    }
+
+    if (!user.resetTokenExpiresAt || user.resetTokenExpiresAt < new Date()) {
+      throw new BadRequestException('Ce lien de réinitialisation a expiré (valable 60 minutes). Veuillez en redemander un nouveau.');
+    }
+
+    if (!newPass || newPass.length < 6) {
+      throw new BadRequestException('Le nouveau mot de passe doit contenir au moins 6 caractères.');
+    }
+
+    user.passwordHash = await argon2.hash(newPass);
+    user.resetToken = null;
+    user.resetTokenExpiresAt = null;
+    user.isActivated = true; // La validation via email prouve la propriété du compte
+    await user.save();
+
+    const org = await this.orgModel.findById(user.organizationId);
+    const jwtToken = this.generateJwt({
+      userId: user._id.toString(),
+      orgId: user.organizationId.toString(),
+      email: user.email,
+    });
+
+    this.logger.log(`[Password Reset] Mot de passe réinitialisé avec succès pour ${normalizedEmail}`);
+
+    return {
+      success: true,
+      message: 'Votre mot de passe a été mis à jour avec succès !',
+      token: jwtToken,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        company: org ? org.name : 'Tuma Org',
+      },
+      organization: org
+        ? {
+            id: org._id.toString(),
+            name: org.name,
+            slug: org.slug,
+            plan: org.plan,
+            monthlyQuota: org.monthlyQuota,
+          }
+        : null,
+    };
   }
 
   /**

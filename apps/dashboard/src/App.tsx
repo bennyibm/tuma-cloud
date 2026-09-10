@@ -54,7 +54,12 @@ function DashboardApp() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      if (window.location.pathname.startsWith('/activate') || window.location.search.includes('otp=')) {
+      if (
+        window.location.pathname.startsWith('/activate') ||
+        window.location.pathname.startsWith('/reset-password') ||
+        window.location.search.includes('otp=') ||
+        window.location.search.includes('token=')
+      ) {
         window.history.replaceState({}, '', '/');
       }
       const completed = localStorage.getItem('tuma_onboarding_completed');
@@ -151,7 +156,10 @@ function DashboardApp() {
     const searchParams = new URLSearchParams(window.location.search);
     const paramEmail = searchParams.get('email') || '';
     const paramOtp = searchParams.get('otp') || '';
+    const paramResetToken = searchParams.get('token') || searchParams.get('resetToken') || '';
+
     const isActivateRoute = window.location.pathname.startsWith('/activate') || (paramEmail && paramOtp);
+    const isResetRoute = window.location.pathname.startsWith('/reset-password') || !!paramResetToken;
 
     if (isActivateRoute) {
       return (
@@ -163,6 +171,19 @@ function DashboardApp() {
           initialStep="otp"
           initialEmail={paramEmail}
           initialOtp={paramOtp}
+        />
+      );
+    }
+
+    if (isResetRoute) {
+      return (
+        <ResetPasswordPage
+          onSwitchToLogin={() => {
+            window.history.replaceState({}, '', '/');
+            setAuthView('login');
+          }}
+          initialEmail={paramEmail}
+          initialToken={paramResetToken}
         />
       );
     }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Post, Req, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Post, Req, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 @Controller('v1/auth')
@@ -57,6 +57,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() body: { email: string }) {
     return this.authService.requestPasswordReset(body.email);
+  }
+
+  @Post('confirm-reset-password')
+  @HttpCode(HttpStatus.OK)
+  async confirmResetPassword(
+    @Body() body: { email: string; token: string; newPassword: string },
+  ) {
+    if (!body.email || !body.token || !body.newPassword) {
+      throw new BadRequestException("L'adresse email, le jeton de sécurité et le nouveau mot de passe sont obligatoires.");
+    }
+    return this.authService.confirmPasswordReset(body.email, body.token, body.newPassword);
   }
 
   @Post('cleanup-smoke-test')

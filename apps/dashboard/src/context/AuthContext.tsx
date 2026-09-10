@@ -28,6 +28,7 @@ interface AuthContextType {
   activate: (email: string, otp: string) => Promise<void>;
   resendOtp: (email: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  confirmPasswordReset: (email: string, token: string, newPass: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -254,6 +255,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const confirmPasswordReset = async (email: string, token: string, newPass: string) => {
+    const res = await fetch(`${API_BASE}/auth/confirm-reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim(),
+        token: token.trim(),
+        newPassword: newPass,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Échec de la réinitialisation du mot de passe.');
+    }
+
+    const data = await res.json();
+    if (data.token) {
+      localStorage.setItem('tuma_auth_token', data.token);
+    }
+
+    if (data.user) {
+      setUser({
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role || 'owner',
+        company: data.user.company || data.organization?.name || 'TUMA Cloud',
+        avatarUrl: '/tuma-icon.jpg',
+      });
+    }
+
+    if (data.organization) {
+      setOrganization({
+        id: data.organization.id,
+        name: data.organization.name,
+        slug: data.organization.slug,
+        plan: data.organization.plan || 'free',
+        monthlyQuota: data.organization.monthlyQuota || 1000,
+      });
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('tuma_auth_token');
     setUser(null);
@@ -272,6 +316,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         activate,
         resendOtp,
         resetPassword,
+        confirmPasswordReset,
         logout,
       }}
     >
