@@ -595,4 +595,69 @@ export class AuthService {
     }
     return { success: true, message: 'Smoke test user not found (already deleted).' };
   }
+
+  /**
+   * Liste tous les utilisateurs enregistrés (Admin / Maintenance)
+   */
+  async listAllUsers() {
+    const users = await this.userModel.find({}).sort({ createdAt: -1 });
+    const orgIds = users.map(u => u.organizationId).filter(Boolean);
+    const orgs = await this.orgModel.find({ _id: { $in: orgIds } });
+    const orgMap = new Map(orgs.map(o => [o._id.toString(), o.name]));
+
+    return users.map(u => ({
+      id: u._id.toString(),
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      isActivated: !!u.isActivated,
+      company: orgMap.get(u.organizationId?.toString()) || 'Aucune',
+      createdAt: (u as any).createdAt || (u as any)._id.getTimestamp(),
+    }));
+  }
+
+  /**
+   * Nettoie les utilisateurs existants en conservant les comptes protégés
+   */
+  async cleanUsers(keepEmails: string[] = ['benny@tuma.dev', 'admin@tuma.dev'], deleteOrgs: boolean = true) {
+    const normalizedKeep = keepEmails.map(e => e.toLowerCase().trim());
+    
+    // Rechercher les utilisateurs à supprimer
+    const usersToDelete = await this.userModel.find({ email: { $nin: normalizedKeep } });
+    const userIds = usersToDelete.map(u => u._id);
+    const orgIdsToDelete = usersToDelete.map(u => u.organizationId).filter(Boolean);
+
+    let deletedUsersCount = 0;
+    let deletedOrgsCount = 0;
+
+    if (userIds.length > 0) {
+      const resUsers = await this.userModel.deleteMany({ _id: { $in: userIds } });
+      deletedUsersCount = resUsers.deletedCount;
+    }
+
+    if (deleteOrgs && orgIdsToDelete.length > 0) {
+      // Ne pas supprimer les organisations encore rattachées à un utilisateur conservé
+      const keptUsers = await this.userModel.find({ email: { $in: normalizedKeep } });
+      const keptOrgIds = new Set(keptUsers.map(u => u.organizationId?.toString()).filter(Boolean));
+      
+      const distinctOrgs = [...new Set(orgIdsToDelete.map(id => id.toString()))]
+        .filter(id => !keptOrgIds.has(id))
+        .map(id => new Types.ObjectId(id));
+
+      if (distinctOrgs.length > 0) {
+        const resOrgs = await this.orgModel.deleteMany({ _id: { $in: distinctOrgs } });
+        deletedOrgsCount = resOrgs.deletedCount;
+      }
+    }
+
+    this.logger.log(`[Admin Cleanup] Supprimé ${deletedUsersCount} utilisateurs et ${deletedOrgsCount} organisations.`);
+
+    return {
+      success: true,
+      deletedUsersCount,
+      deletedOrgsCount,
+      keptEmails: normalizedKeep,
+      deletedUserEmails: usersToDelete.map(u => u.email),
+    };
+  }
 }

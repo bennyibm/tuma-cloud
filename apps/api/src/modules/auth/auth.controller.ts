@@ -64,4 +64,32 @@ export class AuthController {
   async cleanupSmokeTest() {
     return this.authService.deleteSmokeTestUser();
   }
+
+  @Get('admin/users')
+  async listUsers(@Headers('authorization') authHeader?: string) {
+    if (!authHeader) {
+      throw new UnauthorizedException('Token d authentification requis.');
+    }
+    const decoded = this.authService.verifyJwt(authHeader);
+    if (!decoded) {
+      throw new UnauthorizedException('Token invalide ou expiré.');
+    }
+    return this.authService.listAllUsers();
+  }
+
+  @Post('admin/clean-users')
+  @HttpCode(HttpStatus.OK)
+  async cleanUsers(
+    @Headers('authorization') authHeader?: string,
+    @Body() body?: { keepEmails?: string[]; deleteOrgs?: boolean },
+  ) {
+    if (!authHeader) {
+      throw new UnauthorizedException('Token d authentification requis.');
+    }
+    const decoded = this.authService.verifyJwt(authHeader);
+    if (!decoded) {
+      throw new UnauthorizedException('Token invalide ou expiré.');
+    }
+    return this.authService.cleanUsers(body?.keepEmails, body?.deleteOrgs);
+  }
 }
