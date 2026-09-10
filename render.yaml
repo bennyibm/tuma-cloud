@@ -25,6 +25,8 @@ services:
         value: https://bridges.eldnet.tech/tuma-bridge.php
       - key: LWS_BRIDGE_SECRET
         value: 53252ddafb841d3defe44023c025d56cd308a6dca1776d3f
+      - key: TRACKING_BASE_URL
+        value: https://api.tuma.eldnet.tech/v1/track
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

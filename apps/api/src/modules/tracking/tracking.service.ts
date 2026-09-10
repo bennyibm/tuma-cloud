@@ -29,7 +29,20 @@ export class TrackingService {
       'MASTER_ENCRYPTION_KEY',
       '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
     );
-    this.baseUrl = this.configService.get<string>('TRACKING_BASE_URL', 'http://localhost:3001/v1/track');
+
+    const configuredBaseUrl =
+      this.configService.get<string>('TRACKING_BASE_URL') ||
+      process.env.TRACKING_BASE_URL;
+
+    if (configuredBaseUrl) {
+      this.baseUrl = configuredBaseUrl.replace(/\/+$/, '');
+    } else if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+      this.baseUrl = 'https://api.tuma.eldnet.tech/v1/track';
+    } else {
+      this.baseUrl = 'http://localhost:3001/v1/track';
+    }
+
+    this.logger.log(`[Tracking] TrackingService initialisé avec baseUrl: ${this.baseUrl}`);
   }
 
   /**
@@ -54,6 +67,10 @@ export class TrackingService {
         .createHmac('sha256', this.secretKey)
         .update(`${emailId}:${organizationId}`)
         .digest('hex');
+
+      if (!hmac || !expectedHmac || Buffer.byteLength(hmac) !== Buffer.byteLength(expectedHmac)) {
+        return null;
+      }
 
       const isValid = crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(expectedHmac));
       if (!isValid) return null;
@@ -91,8 +108,10 @@ export class TrackingService {
       },
     );
 
-    // 2. Injection du pixel transparent 1x1 avant </body> ou à la fin
-    const pixelTag = `<img src="${this.baseUrl}/open/${token}" width="1" height="1" alt="" style="display:none !important; width:1px; height:1px; border:0;" />`;
+    // 2. Injection du pixel transparent 1x1 sans display:none pour éviter le blocage par les webmails (Gmail, Apple Mail, Outlook)
+    const pixelTag = `<img src="${this.baseUrl}/open/${token}" width="1" height="1" border="0" alt="" style="height:1px !important; width:1px !important; border-width:0 !important; margin:0 !important; padding:0 !important; opacity:0 !important;" />`;
+
+    this.logger.log(`[Tracking] Pixel injecté pour l'email ${emailId} via ${this.baseUrl}/open/${token.slice(0, 16)}...`);
 
     if (wrappedHtml.includes('</body>')) {
       return wrappedHtml.replace('</body>', `${pixelTag}</body>`);
@@ -109,11 +128,14 @@ export class TrackingService {
     if (data) {
       const email = await this.emailModel.findById(data.emailId);
       if (email) {
-        // Incrémentation du compteur d'ouvertures
-        const isFirstOpen = email.tracking.opens === 0;
+        // Incrémentation sécurisée du compteur d'ouvertures
+        const currentOpens = email.tracking?.opens ?? 0;
+        const isFirstOpen = currentOpens === 0;
+
         await this.emailModel.findByIdAndUpdate(data.emailId, {
           $inc: { 'tracking.opens': 1 },
           ...(isFirstOpen ? { 'tracking.firstOpenedAt': new Date() } : {}),
+          status: email.status === 'sent' ? 'delivered' : email.status,
         });
 
         // Enregistrement de l'événement dans la timeline
@@ -131,13 +153,17 @@ export class TrackingService {
           emailId: data.emailId,
           recipient: email.to[0],
           subject: email.subject,
-          openCount: email.tracking.opens + 1,
+          openCount: currentOpens + 1,
           ip,
           userAgent,
         });
 
-        this.logger.log(`[Tracking] Email ${data.emailId} ouvert par ${email.to[0]} (IP: ${ip || 'inconnue'})`);
+        this.logger.log(`[Tracking] ✅ Email ${data.emailId} ouvert par ${email.to[0]} (Total ouvertures: ${currentOpens + 1}, IP: ${ip || 'inconnue'})`);
+      } else {
+        this.logger.warn(`[Tracking] Email ${data.emailId} introuvable dans la base`);
       }
+    } else {
+      this.logger.warn(`[Tracking] Jeton d'ouverture invalide ou expiré: ${token.slice(0, 16)}...`);
     }
 
     return this.transparentGifBuffer;
@@ -153,10 +179,13 @@ export class TrackingService {
     if (data) {
       const email = await this.emailModel.findById(data.emailId);
       if (email) {
+        const currentClicks = email.tracking?.clicks ?? 0;
+
         // Incrémentation du compteur de clics
         await this.emailModel.findByIdAndUpdate(data.emailId, {
           $inc: { 'tracking.clicks': 1 },
           'tracking.lastClickedAt': new Date(),
+          status: email.status === 'sent' ? 'delivered' : email.status,
         });
 
         // Enregistrement de l'événement dans la timeline
@@ -174,13 +203,17 @@ export class TrackingService {
           emailId: data.emailId,
           recipient: email.to[0],
           targetUrl: destination,
-          clickCount: email.tracking.clicks + 1,
+          clickCount: currentClicks + 1,
           ip,
           userAgent,
         });
 
-        this.logger.log(`[Tracking] Clic enregistré pour l'email ${data.emailId} vers ${destination}`);
+        this.logger.log(`[Tracking] ✅ Clic enregistré pour l'email ${data.emailId} vers ${destination} (Total clics: ${currentClicks + 1})`);
+      } else {
+        this.logger.warn(`[Tracking] Email ${data.emailId} introuvable pour le clic`);
       }
+    } else {
+      this.logger.warn(`[Tracking] Jeton de clic invalide ou expiré: ${token.slice(0, 16)}...`);
     }
 
     return destination;

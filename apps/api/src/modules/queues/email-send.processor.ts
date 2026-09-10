@@ -66,6 +66,12 @@ export class EmailSendProcessor extends WorkerHost {
       const compiledSubject = this.templateCompiler.compile(subject, variables);
       let compiledHtml = html ? this.templateCompiler.compile(html, variables) : '';
 
+      // Si aucun HTML n'est spécifié mais qu'un texte existe, on génère un HTML basique pour permettre l'injection du pixel
+      if (!compiledHtml && text) {
+        const compiledText = this.templateCompiler.compile(text, variables);
+        compiledHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">${compiledText.replace(/\r\n|\n/g, '<br />')}</div>`;
+      }
+
       // 3. Injection du pixel 1x1 et réécriture des liens pour le tracking des clics
       if (compiledHtml) {
         compiledHtml = this.trackingService.injectTracking(emailId, organizationId, compiledHtml);
