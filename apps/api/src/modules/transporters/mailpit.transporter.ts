@@ -290,6 +290,16 @@ export class MailpitTransporter implements ITransporter {
       req.end();
     });
 
+    this.logger.log(
+      `[LWS Bridge] Résultat d'envoi: mode=${data.mode || 'standard'}, messageId=${data.messageId}`,
+    );
+
+    if (data.mode && data.mode.startsWith('php_mail')) {
+      this.logger.warn(
+        `[LWS Bridge SPF Alert] L'email a été expédié via ${data.mode} sans authentification SMTP directe. Renseignez SMTP_PASS pour expédier via mail.eldnet.tech et éviter le dossier Spam de Gmail.`,
+      );
+    }
+
     return {
       providerMessageId: data.messageId || `<lws-${Date.now()}@eldnet.tech>`,
       provider: 'lws_bridge',

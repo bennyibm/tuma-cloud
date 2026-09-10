@@ -269,14 +269,20 @@ export class EmailsService implements OnApplicationBootstrap {
     const senderFrom = defaultFrom;
     const recipientTo = dto.recipientEmail ? [dto.recipientEmail] : ['support@tuma.dev'];
 
-    // 7. Enregistrement de l'email et mise en file
+    // 7. Enrichissement du HTML avec un lien de confirmation cliquable (pour tester la télémétrie de clics)
+    let emailHtml = templateDoc.html || '';
+    if (emailHtml && !emailHtml.includes('<a')) {
+      emailHtml += `<p style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #E5E7EB; font-family: sans-serif; font-size: 13px;"><a href="https://console.tuma.eldnet.tech" style="display: inline-block; padding: 9px 18px; background: #FF6B00; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">Accéder à la console Tuma</a></p>`;
+    }
+
+    // 8. Enregistrement de l'email et mise en file
     const newEmail = await this.emailModel.create({
       organizationId: authData.organizationId,
       templateId: templateDoc._id,
       from: senderFrom,
       to: recipientTo,
       subject: templateDoc.subject,
-      html: templateDoc.html,
+      html: emailHtml,
       text: templateDoc.text,
       status: 'queued',
       variables: dto.variables,
@@ -289,7 +295,7 @@ export class EmailsService implements OnApplicationBootstrap {
       from: senderFrom,
       to: recipientTo,
       subject: templateDoc.subject,
-      html: templateDoc.html,
+      html: emailHtml,
       text: templateDoc.text,
       variables: dto.variables,
     };

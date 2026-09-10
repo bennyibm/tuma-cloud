@@ -11,10 +11,15 @@
 // 1. Définissez votre clé secrète partagée (à renseigner aussi dans LWS_BRIDGE_SECRET sur Render)
 define('TUMA_SECRET', '53252ddafb841d3defe44023c025d56cd308a6dca1776d3f');
 
+// Optionnel : Vous pouvez aussi renseigner ici les identifiants SMTP de votre boîte LWS
+// pour garantir que vos emails passent avec succès les contrôles SPF, DKIM et DMARC de Gmail :
+define('LWS_SMTP_USER', 'contact@eldnet.tech');
+define('LWS_SMTP_PASS', ''); // Ex: 'VotreMotDePasseBoiteEmailLWS' (si non transmis par l'API)
+
 // 2. Gestion des en-têtes CORS et JSON
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Tuma-Secret');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -69,16 +74,17 @@ $replyTo = $data['replyTo'] ?? $from;
 preg_match('/<([^>]+)>/', $from, $fromMatches);
 $senderEmail = $fromMatches[1] ?? $from;
 
-// 5. Construction du message MIME Multipart/Alternative (HTML + Texte)
+// 5. Construction du message MIME Multipart/Alternative (HTML + Texte) conforme RFC 5322
 $boundary = "==Multipart_Boundary_x" . md5(time()) . "x";
 $messageId = "<tuma-lws-" . time() . "-" . bin2hex(random_bytes(4)) . "@eldnet.tech>";
 
-$headers  = "From: " . $from . "\r\n";
+$headers  = "Date: " . date('r') . "\r\n";
+$headers .= "From: " . $from . "\r\n";
 $headers .= "Reply-To: " . $replyTo . "\r\n";
 $headers .= "Message-ID: " . $messageId . "\r\n";
 $headers .= "MIME-Version: 1.0\r\n";
 $headers .= "Content-Type: multipart/alternative; boundary=\"" . $boundary . "\"\r\n";
-$headers .= "X-Mailer: TUMA Cloud LWS Bridge\r\n";
+$headers .= "X-Entity-Ref-ID: " . $messageId . "\r\n";
 
 $body  = "--" . $boundary . "\r\n";
 $body .= "Content-Type: text/plain; charset=\"UTF-8\"\r\n";
@@ -94,46 +100,53 @@ if (!empty($htmlContent)) {
 
 $body .= "--" . $boundary . "--";
 
-// 6. Expédition : essai via mail() puis secours via SMTP direct LWS
+// 6. Expédition : PRIORITÉ 1 = Relais SMTP Authentifié (SPF, DKIM, DMARC valides -> Boîte de réception)
 $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
 $fullHeaders = $headers . "Subject: " . $encodedSubject . "\r\nTo: " . $to . "\r\n";
 $fullMessage = $fullHeaders . "\r\n" . $body;
 
 $sent = false;
+$usedMode = 'none';
 $errorDetail = '';
 
-// Tentative 1 : mail() sans -f
-$sent = @mail($to, $encodedSubject, $body, $headers);
+// Récupération du mot de passe SMTP (depuis la requête API ou la constante locale)
+$smtpPass = !empty($data['smtpPass']) ? $data['smtpPass'] : (!empty($data['smtp_pass']) ? $data['smtp_pass'] : (defined('LWS_SMTP_PASS') ? LWS_SMTP_PASS : ''));
+$smtpUser = !empty($data['smtpUser']) ? $data['smtpUser'] : (!empty($data['smtp_user']) ? $data['smtp_user'] : (defined('LWS_SMTP_USER') ? LWS_SMTP_USER : $senderEmail));
+$smtpHost = $data['smtpHost'] ?? 'mail.eldnet.tech';
+$smtpPort = intval($data['smtpPort'] ?? 587);
 
-// Tentative 2 : mail() avec -f
-if (!$sent) {
-    $sent = @mail($to, $encodedSubject, $body, $headers, "-f " . escapeshellarg($senderEmail));
+// TENTATIVE 1 : Relais SMTP direct via socket (Garantit SPF + DKIM avec mail.eldnet.tech)
+if (!empty($smtpPass)) {
+    $smtpResult = tumaSendSmtp($smtpHost, $smtpPort, $smtpUser, $smtpPass, $senderEmail, $to, $fullMessage);
+    if ($smtpResult === true) {
+        $sent = true;
+        $usedMode = 'smtp_authenticated_port_' . $smtpPort;
+    } else {
+        // Secours automatique sur l'autre port (587 <-> 465)
+        $altPort = ($smtpPort === 465) ? 587 : 465;
+        $altResult = tumaSendSmtp($smtpHost, $altPort, $smtpUser, $smtpPass, $senderEmail, $to, $fullMessage);
+        if ($altResult === true) {
+            $sent = true;
+            $usedMode = 'smtp_authenticated_port_' . $altPort;
+        } else {
+            $errorDetail = "SMTP (port $smtpPort): " . $smtpResult . " | SMTP (port $altPort): " . $altResult;
+        }
+    }
 }
 
-// Tentative 3 : SMTP direct via Socket si un mot de passe est transmis ou configuré
+// TENTATIVE 2 : Secours via mail() local si aucun mot de passe ou si SMTP socket a échoué
 if (!$sent) {
-    $smtpPass = $data['smtpPass'] ?? ($data['smtp_pass'] ?? '');
-    $smtpUser = $data['smtpUser'] ?? ($data['smtp_user'] ?? $senderEmail);
-    $smtpHost = $data['smtpHost'] ?? 'mail.eldnet.tech';
-    $smtpPort = intval($data['smtpPort'] ?? 587);
-
-    if (!empty($smtpPass)) {
-        $smtpResult = tumaSendSmtp($smtpHost, $smtpPort, $smtpUser, $smtpPass, $senderEmail, $to, $fullMessage);
-        if ($smtpResult === true) {
-            $sent = true;
-        } else {
-            // Tentative de secours automatique sur le port alternatif (465 <-> 587)
-            $altPort = ($smtpPort === 465) ? 587 : 465;
-            $altResult = tumaSendSmtp($smtpHost, $altPort, $smtpUser, $smtpPass, $senderEmail, $to, $fullMessage);
-            if ($altResult === true) {
-                $sent = true;
-            } else {
-                $errorDetail = "SMTP (port $smtpPort): " . $smtpResult . " | SMTP (port $altPort): " . $altResult;
-            }
-        }
+    $sent = @mail($to, $encodedSubject, $body, $headers, "-f " . escapeshellarg($senderEmail));
+    if ($sent) {
+        $usedMode = 'php_mail_envelope_f';
     } else {
-        $lastErr = error_get_last();
-        $errorDetail = "mail() a échoué (" . ($lastErr['message'] ?? 'fonction désactivée ou restriction LWS') . "). Vous pouvez renseigner 'smtpPass' dans le JSON pour utiliser le relais SMTP direct.";
+        $sent = @mail($to, $encodedSubject, $body, $headers);
+        if ($sent) {
+            $usedMode = 'php_mail_standard';
+        } else {
+            $lastErr = error_get_last();
+            $errorDetail .= ($errorDetail ? ' | ' : '') . "mail() error: " . ($lastErr['message'] ?? 'fonction mail() désactivée');
+        }
     }
 }
 
@@ -141,6 +154,7 @@ if ($sent) {
     echo json_encode([
         'success' => true,
         'messageId' => $messageId,
+        'mode' => $usedMode,
         'provider' => 'lws_php_bridge',
         'timestamp' => date('c'),
     ]);
