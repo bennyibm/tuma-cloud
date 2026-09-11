@@ -14,11 +14,23 @@ export class User {
   @Prop({ required: true, unique: true, lowercase: true, trim: true, index: true })
   email: string;
 
-  @Prop({ required: true })
-  passwordHash: string;
+  @Prop({ required: false, default: null })
+  passwordHash?: string;
 
   @Prop({ required: true, enum: ['owner', 'admin', 'developer', 'billing'], default: 'owner' })
   role: string;
+
+  @Prop({ default: null, index: true, sparse: true })
+  googleId?: string;
+
+  @Prop({ default: null, index: true, sparse: true })
+  githubId?: string;
+
+  @Prop({ default: null })
+  avatarUrl?: string;
+
+  @Prop({ required: true, enum: ['local', 'google', 'github'], default: 'local' })
+  authProvider: string;
 
   @Prop({ default: null })
   resetToken?: string;

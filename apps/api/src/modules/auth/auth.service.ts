@@ -354,6 +354,13 @@ export class AuthService {
       throw new UnauthorizedException('Adresse email ou mot de passe incorrect.');
     }
 
+    if (!user.passwordHash) {
+      const providerName = user.authProvider === 'google' ? 'Google' : user.authProvider === 'github' ? 'GitHub' : 'un service tiers';
+      throw new UnauthorizedException(
+        `Ce compte a été créé via ${providerName}. Veuillez cliquer sur "Continuer avec ${providerName}" ou réinitialiser votre mot de passe.`,
+      );
+    }
+
     const isValid = await argon2.verify(user.passwordHash, pass);
     if (!isValid) {
       throw new UnauthorizedException('Adresse email ou mot de passe incorrect.');
@@ -419,6 +426,8 @@ export class AuthService {
         email: user.email,
         role: user.role,
         company: org ? org.name : 'Tuma Org',
+        avatarUrl: user.avatarUrl,
+        authProvider: user.authProvider || 'local',
       },
       organization: org ? {
         id: org._id.toString(),
@@ -748,6 +757,198 @@ export class AuthService {
       deletedOrgsCount,
       keptEmails: normalizedKeep,
       deletedUserEmails: usersToDelete.map(u => u.email),
+    };
+  }
+
+  /**
+   * Traite l'authentification OAuth Google (connexion ou inscription automatique)
+   */
+  async handleGoogleAuth(profile: {
+    sub: string;
+    email: string;
+    name?: string;
+    picture?: string;
+  }) {
+    const normalizedEmail = (profile.email || '').toLowerCase().trim();
+    if (!normalizedEmail) {
+      throw new BadRequestException('Aucune adresse email trouvée dans le profil Google.');
+    }
+
+    let user = await this.userModel.findOne({
+      $or: [{ googleId: profile.sub }, { email: normalizedEmail }],
+    });
+
+    if (user) {
+      let modified = false;
+      if (!user.googleId) {
+        user.googleId = profile.sub;
+        modified = true;
+      }
+      if (!user.isActivated) {
+        user.isActivated = true;
+        user.activationOtp = null;
+        user.activationOtpExpiresAt = null;
+        modified = true;
+      }
+      if (profile.picture && (!user.avatarUrl || user.avatarUrl.includes('tuma-icon.jpg'))) {
+        user.avatarUrl = profile.picture;
+        modified = true;
+      }
+      if (modified) {
+        await user.save();
+      }
+    } else {
+      const displayName = profile.name || normalizedEmail.split('@')[0];
+      const orgSlug =
+        displayName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).substring(2, 6);
+
+      const org = await this.orgModel.create({
+        name: displayName,
+        slug: orgSlug,
+        plan: 'free',
+        monthlyQuota: 1000,
+        monthlyUsage: 0,
+        contactEmail: normalizedEmail,
+      });
+
+      user = await this.userModel.create({
+        organizationId: org._id,
+        name: displayName,
+        email: normalizedEmail,
+        googleId: profile.sub,
+        avatarUrl: profile.picture,
+        authProvider: 'google',
+        role: 'owner',
+        isActivated: true,
+      });
+
+      this.logger.log(`[OAuth Google] Nouveau compte TUMA créé pour ${normalizedEmail}`);
+    }
+
+    const org = await this.orgModel.findById(user.organizationId);
+    const token = this.generateJwt({
+      userId: user._id.toString(),
+      orgId: user.organizationId.toString(),
+      email: user.email,
+    });
+
+    return {
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        company: org ? org.name : 'Tuma Org',
+        avatarUrl: user.avatarUrl,
+        authProvider: user.authProvider || 'google',
+      },
+      organization: org
+        ? {
+            id: org._id.toString(),
+            name: org.name,
+            slug: org.slug,
+            plan: org.plan,
+            monthlyQuota: org.monthlyQuota,
+          }
+        : null,
+    };
+  }
+
+  /**
+   * Traite l'authentification OAuth GitHub (connexion ou inscription automatique)
+   */
+  async handleGithubAuth(profile: {
+    id: string | number;
+    email: string;
+    name?: string;
+    login?: string;
+    avatar_url?: string;
+  }) {
+    const githubId = profile.id.toString();
+    const normalizedEmail = (profile.email || '').toLowerCase().trim();
+    if (!normalizedEmail) {
+      throw new BadRequestException('Aucune adresse email vérifiée trouvée pour ce compte GitHub.');
+    }
+
+    let user = await this.userModel.findOne({
+      $or: [{ githubId }, { email: normalizedEmail }],
+    });
+
+    if (user) {
+      let modified = false;
+      if (!user.githubId) {
+        user.githubId = githubId;
+        modified = true;
+      }
+      if (!user.isActivated) {
+        user.isActivated = true;
+        user.activationOtp = null;
+        user.activationOtpExpiresAt = null;
+        modified = true;
+      }
+      if (profile.avatar_url && (!user.avatarUrl || user.avatarUrl.includes('tuma-icon.jpg'))) {
+        user.avatarUrl = profile.avatar_url;
+        modified = true;
+      }
+      if (modified) {
+        await user.save();
+      }
+    } else {
+      const displayName = profile.name || profile.login || normalizedEmail.split('@')[0];
+      const orgSlug =
+        displayName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).substring(2, 6);
+
+      const org = await this.orgModel.create({
+        name: `${displayName}'s Workspace`,
+        slug: orgSlug,
+        plan: 'free',
+        monthlyQuota: 1000,
+        monthlyUsage: 0,
+        contactEmail: normalizedEmail,
+      });
+
+      user = await this.userModel.create({
+        organizationId: org._id,
+        name: displayName,
+        email: normalizedEmail,
+        githubId,
+        avatarUrl: profile.avatar_url,
+        authProvider: 'github',
+        role: 'owner',
+        isActivated: true,
+      });
+
+      this.logger.log(`[OAuth GitHub] Nouveau compte TUMA créé pour ${normalizedEmail}`);
+    }
+
+    const org = await this.orgModel.findById(user.organizationId);
+    const token = this.generateJwt({
+      userId: user._id.toString(),
+      orgId: user.organizationId.toString(),
+      email: user.email,
+    });
+
+    return {
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        company: org ? org.name : 'Tuma Org',
+        avatarUrl: user.avatarUrl,
+        authProvider: user.authProvider || 'github',
+      },
+      organization: org
+        ? {
+            id: org._id.toString(),
+            name: org.name,
+            slug: org.slug,
+            plan: org.plan,
+            monthlyQuota: org.monthlyQuota,
+          }
+        : null,
     };
   }
 }

@@ -80,8 +80,12 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setShowUserDropdown(!showUserDropdown)}
             className="flex items-center gap-2.5 bg-[#111827] hover:bg-[#1F2937] text-xs font-medium text-white px-3 py-1.5 rounded-lg border border-[#1F2937] transition-colors"
           >
-            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#10B981] to-[#06B6D4] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-              {user?.name ? user.name[0].toUpperCase() : 'U'}
+            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#10B981] to-[#06B6D4] flex items-center justify-center text-[10px] font-bold text-white shrink-0 overflow-hidden">
+              {user?.avatarUrl && !user.avatarUrl.includes('tuma-icon.jpg') ? (
+                <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                user?.name ? user.name[0].toUpperCase() : 'U'
+              )}
             </div>
             <div className="text-left hidden sm:block">
               <div className="font-semibold text-xs leading-none">{user?.name || 'Utilisateur'}</div>
@@ -94,13 +98,29 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* User Dropdown Menu */}
           {showUserDropdown && (
-            <div className="absolute right-0 mt-2 w-56 bg-[#111827] border border-[#1F2937] rounded-xl shadow-2xl p-2 space-y-1 animate-in fade-in-50 duration-100 z-50">
-              <div className="px-3 py-2 border-b border-[#1F2937] mb-1">
-                <p className="text-xs font-semibold text-white">{user?.name || 'Utilisateur'}</p>
-                <p className="text-[11px] text-[#6B7280] truncate">{user?.email || 'compte@tuma.dev'}</p>
-                <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded bg-[#10B981]/15 text-[#10B981] font-semibold border border-[#10B981]/30">
-                  {user?.role || 'Admin'}
-                </span>
+            <div className="absolute right-0 mt-2 w-60 bg-[#111827] border border-[#1F2937] rounded-xl shadow-2xl p-2 space-y-1 animate-in fade-in-50 duration-100 z-50">
+              <div className="px-3 py-2 border-b border-[#1F2937] mb-1 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#10B981] to-[#06B6D4] flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden">
+                  {user?.avatarUrl && !user.avatarUrl.includes('tuma-icon.jpg') ? (
+                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    user?.name ? user.name[0].toUpperCase() : 'U'
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-white truncate">{user?.name || 'Utilisateur'}</p>
+                  <p className="text-[11px] text-[#6B7280] truncate">{user?.email || 'compte@tuma.dev'}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#10B981]/15 text-[#10B981] font-semibold border border-[#10B981]/30">
+                      {user?.role || 'Admin'}
+                    </span>
+                    {user?.authProvider && user.authProvider !== 'local' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1F2937] text-[#9CA3AF] border border-[#374151] capitalize">
+                        {user.authProvider}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {onOpenOnboarding && (

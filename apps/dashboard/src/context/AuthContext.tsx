@@ -8,6 +8,7 @@ export interface User {
   role: 'owner' | 'admin' | 'developer' | 'viewer';
   company: string;
   avatarUrl?: string;
+  authProvider?: 'local' | 'google' | 'github';
 }
 
 export interface Organization {
@@ -24,6 +25,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, pass: string) => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
   register: (name: string, email: string, company: string, pass: string) => Promise<{ requiresActivation?: boolean; email: string; message?: string }>;
   activate: (email: string, otp: string) => Promise<void>;
   resendOtp: (email: string) => Promise<void>;
@@ -39,58 +41,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Vérification de session au démarrage via l'API réelle
-  useEffect(() => {
-    const checkAuthSession = async () => {
-      const storedToken = localStorage.getItem('tuma_auth_token');
-      if (!storedToken) {
-        setIsLoading(false);
-        return;
-      }
+  const fetchMe = async (token: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      try {
-        const res = await fetch(`${API_BASE}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${storedToken}`,
-          },
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('tuma_auth_token', token);
+        setUser({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          role: data.user.role || 'owner',
+          company: data.user.company || data.organization?.name || 'TUMA Cloud',
+          avatarUrl: data.user.avatarUrl || '/tuma-icon.jpg',
+          authProvider: data.user.authProvider || 'local',
         });
-
-        if (res.ok) {
-          const data = await res.json();
-          setUser({
-            id: data.user.id,
-            name: data.user.name,
-            email: data.user.email,
-            role: data.user.role || 'owner',
-            company: data.user.company || data.organization?.name || 'TUMA Cloud',
-            avatarUrl: '/tuma-icon.jpg',
+        if (data.organization) {
+          setOrganization({
+            id: data.organization.id,
+            name: data.organization.name,
+            slug: data.organization.slug,
+            plan: data.organization.plan || 'pro',
+            monthlyQuota: data.organization.monthlyQuota || 50000,
           });
-          if (data.organization) {
-            setOrganization({
-              id: data.organization.id,
-              name: data.organization.name,
-              slug: data.organization.slug,
-              plan: data.organization.plan || 'pro',
-              monthlyQuota: data.organization.monthlyQuota || 50000,
-            });
-          }
-        } else {
-          // Token expiré ou invalide
-          localStorage.removeItem('tuma_auth_token');
-          setUser(null);
-          setOrganization(null);
         }
-      } catch {
+      } else {
         localStorage.removeItem('tuma_auth_token');
         setUser(null);
         setOrganization(null);
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch {
+      localStorage.removeItem('tuma_auth_token');
+      setUser(null);
+      setOrganization(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    checkAuthSession();
+  // Vérification de session au démarrage via l'API réelle
+  useEffect(() => {
+    const storedToken = localStorage.getItem('tuma_auth_token');
+    if (storedToken) {
+      fetchMe(storedToken);
+    } else {
+      setIsLoading(false);
+    }
   }, []);
+
+  const loginWithToken = async (token: string) => {
+    setIsLoading(true);
+    await fetchMe(token);
+  };
 
   const login = async (email: string, pass: string) => {
     const res = await fetch(`${API_BASE}/auth/login`, {
@@ -312,6 +319,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithToken,
         register,
         activate,
         resendOtp,

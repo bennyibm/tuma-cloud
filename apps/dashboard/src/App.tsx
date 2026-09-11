@@ -45,18 +45,35 @@ const getInitialTab = (): NavigationTab => {
 };
 
 function DashboardApp() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, loginWithToken } = useAuth();
   const [authView, setAuthView] = useState<AuthView>('login');
   const [currentTab, setCurrentTab] = useState<NavigationTab>(getInitialTab);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [emailCount, setEmailCount] = useState(5);
 
+  // Détection et traitement du retour OAuth Google / GitHub (?token=...)
+  useEffect(() => {
+    if (isAuthenticated) return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const callbackToken = searchParams.get('token');
+    const paramEmail = searchParams.get('email');
+    const isAuthCallback =
+      window.location.pathname.startsWith('/auth/callback') ||
+      (!!callbackToken && !window.location.pathname.startsWith('/reset-password') && !paramEmail);
+
+    if (callbackToken && isAuthCallback) {
+      window.history.replaceState({}, '', '/');
+      loginWithToken(callbackToken);
+    }
+  }, [isAuthenticated, loginWithToken]);
+
   useEffect(() => {
     if (isAuthenticated) {
       if (
         window.location.pathname.startsWith('/activate') ||
         window.location.pathname.startsWith('/reset-password') ||
+        window.location.pathname.startsWith('/auth/callback') ||
         window.location.search.includes('otp=') ||
         window.location.search.includes('token=')
       ) {
@@ -159,7 +176,7 @@ function DashboardApp() {
     const paramResetToken = searchParams.get('token') || searchParams.get('resetToken') || '';
 
     const isActivateRoute = window.location.pathname.startsWith('/activate') || (paramEmail && paramOtp);
-    const isResetRoute = window.location.pathname.startsWith('/reset-password') || !!paramResetToken;
+    const isResetRoute = window.location.pathname.startsWith('/reset-password') || (!!paramResetToken && !!paramEmail);
 
     if (isActivateRoute) {
       return (
